@@ -23,6 +23,7 @@ email = ""
 logPath = ""
 idOffset = 0
 
+duration = "7-00:00:00"
 
 if narg < 2:
     print ""
@@ -45,8 +46,8 @@ if narg < 2:
     print " -e or --email MAIL :"
     print " It allows to specify the e-mail for batch system job notifications"
     print ""
-    print " -i or --idOffset VALUE :"
-    print " An integer number to introduce an offset to the log id file."
+    print " -i or --initialRun VALUE :"
+    print " An integer number to introduce the first run number."
     print ""
     print " -r or --repeat REPEAT_VALUE :"
     print " This option defines the number of simulations we will launch (default is 10)"
@@ -106,6 +107,8 @@ print ( "Number of jobs to launch : " + str(repeat) )
 print ( "Jobs name : " + str(jobName) )
 print ( "Delay in seconds between jobs : " + str(delay) )
 
+runNumber = idOffset
+
 for x in xrange(repeat):
     ################################################
     # Creating job environment and execution command
@@ -126,7 +129,10 @@ for x in xrange(repeat):
     f.write("#SBATCH --ntasks=1\n")
     f.write("#SBATCH --mail-type=ALL\n")
     f.write("#SBATCH -p bifi\n")
+    f.write("#SBATCH --time=" + duration + " # days-hh:mm:ss\n")
 
+    f.write("export RUN_NUMBER="+ str(runNumber) +"\n\n")
+    runNumber = runNumber + 1
     f.write("export USER="+ os.environ['USER']+"\n\n")
 
     # We transfer env variables to SLURM environment
