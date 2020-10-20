@@ -91,6 +91,16 @@ f.write("#!/bin/bash\n")
 
 # We transfer env variables to Condor environment
 for key in os.environ.keys(): 
+    print( "export " + key + "=" + os.environ[key] +"\n" )
+    if key.find( "DATA") == 0:
+	f.write( "export " + key + "=" + os.environ[key] +"\n" )
+        print( "export " + key + "=" + os.environ[key] +"\n" )
+    if key.find("GDML") == 0:
+	f.write( "export " + key + "=" + os.environ[key] +"\n" )
+	print( "export " + key + "=" + os.environ[key] +"\n" )
+    if key.find("GEOMETRY") >= 0:
+        f.write( "export " + key + "=" + os.environ[key] +"\n" )
+        print( "export " + key + "=" + os.environ[key] +"\n" )
     if key.find("REST") == 0:
         f.write( "export " + key + "=" + os.environ[key] +"\n" )
         print( "export " + key + "=" + os.environ[key] +"\n" )
@@ -110,9 +120,6 @@ for key in os.environ.keys():
     if key.find("PWD") == 0:
         f.write( "export " + key + "=" + os.environ[key] +"\n" )
 
-f.write("export BL2_HOME="+ os.environ['BL2_HOME']+"\n")
-f.write("export SCRATCH_HOME="+ os.environ['SCRATCH_HOME']+"\n")
-f.write("export OPT_PATH="+ os.environ['OPT_PATH']+"\n")
 f.write("export USER="+ os.environ['USER']+"\n\n")
 
 command = "restG4 " + os.environ['PWD'] + "/" + cfgFile + " " + sectionName
@@ -131,13 +138,12 @@ while ( rpt > 0 ):
     rpt = rpt-1
 
     g = open( scriptName + "_" + str(cont) + ".condor", "w" )
-    g.write("Universe   = vanilla\n" );
     g.write("Executable = " + scriptName + ".sh\n" )
     g.write("Arguments = \n" )
     g.write("Log = " + scriptName + "_" + str(cont) + ".log\n" )
     g.write("Output = " + scriptName + "_" + str(cont) + ".out\n" )
     g.write("Error = " + scriptName + "_" + str(cont) + ".err\n" )
-    g.write("Queue\n" )
+    g.write("queue 1\n" )
     g.close()
 
     if onlyScripts == 0:
