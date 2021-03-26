@@ -17,6 +17,8 @@ narg = len(sys.argv)
 cfgFile = ""
 sectionName = ""
 jobName = ""
+idOffset = 0
+logPath = ""
 
 
 if narg < 2:
@@ -38,9 +40,11 @@ if narg < 2:
     print " -n or --sectionName SECTION_NAME :"
     print " Defines the name of the section to be used from CONFIG_FILE"
     print ""
-    print ""
     print " -r or --repeat REPEAT_VALUE :"
     print " This option defines the number of simulations we will launch"
+    print ""
+    print " -i or --initialRun VALUE :"
+    print " An integer number to introduce the first run number."
     print ""
     print " -s or --sleep SLEEP_TIME :"
     print " Time delay between launching 2 reapeated jobs (default is 5 seconds)"
@@ -62,6 +66,12 @@ for x in range(narg-1):
     if ( sys.argv[x+1] == "--cfgFile" or sys.argv[x+1] == "-c" ):
         cfgFile = sys.argv[x+2]
 
+    if ( sys.argv[x+1] == "--logPath" or sys.argv[x+1] == "-l" ):
+        logPath = sys.argv[x+2]
+
+    if ( sys.argv[x+1] == "--idOffset" or sys.argv[x+1] == "-i" ):
+        idOffset = int(sys.argv[x+2])
+
     if ( sys.argv[x+1] == "--sleep" or sys.argv[x+1] == "-s" ):
         sleep = int( sys.argv[x+2] )
 
@@ -75,8 +85,8 @@ for x in range(narg-1):
         onlyScripts = 1
 
 
-if not os.path.exists("condor"):
-    os.makedirs("condor")
+if not os.path.exists(logPath+"condor"):
+    os.makedirs(logPath+"condor")
 
 if jobName == "":
     jobName = cfgFile[cfgFile.rfind("/")+1:cfgFile.rfind(".rml")]
@@ -84,58 +94,60 @@ if jobName == "":
 ################################################
 # Creating job environment and execution command
 ################################################
-scriptName = "condor/" + jobName
-
-f = open( scriptName + ".sh", "w" )
-f.write("#!/bin/bash\n")
-
-# We transfer env variables to Condor environment
-for key in os.environ.keys(): 
-    print( "export " + key + "=" + os.environ[key] +"\n" )
-    if key.find( "DATA") == 0:
-	f.write( "export " + key + "=" + os.environ[key] +"\n" )
-        print( "export " + key + "=" + os.environ[key] +"\n" )
-    if key.find("GDML") == 0:
-	f.write( "export " + key + "=" + os.environ[key] +"\n" )
-	print( "export " + key + "=" + os.environ[key] +"\n" )
-    if key.find("GEOMETRY") >= 0:
-        f.write( "export " + key + "=" + os.environ[key] +"\n" )
-        print( "export " + key + "=" + os.environ[key] +"\n" )
-    if key.find("REST") == 0:
-        f.write( "export " + key + "=" + os.environ[key] +"\n" )
-        print( "export " + key + "=" + os.environ[key] +"\n" )
-    if key.find("G4") == 0:
-        f.write( "export " + key + "=" + os.environ[key] +"\n" )
-    if key.find("PATH") == 0:
-        print( "export " + key + "=" + os.environ[key] +"\n" )
-        f.write( "export " + key + "=" + os.environ[key] +"\n" )
-    if key.find("LD_LIBRARY_PATH") == 0:
-        print( "export " + key + "=" + os.environ[key] +"\n" )
-        f.write( "export " + key + "=" + os.environ[key] +"\n" )
-    if key.find("GARFIELD_") == 0:
-        print( "export " + key + "=" + os.environ[key] +"\n" )
-        f.write( "export " + key + "=" + os.environ[key] +"\n" )
-    if key.find("HEED_") == 0:
-        f.write( "export " + key + "=" + os.environ[key] +"\n" )
-    if key.find("PWD") == 0:
-        f.write( "export " + key + "=" + os.environ[key] +"\n" )
-
-f.write("export USER="+ os.environ['USER']+"\n\n")
-
-command = "restG4 " + os.environ['PWD'] + "/" + cfgFile + " " + sectionName
-f.write(  command + "\n" )
-f.close()
-
-st = os.stat( scriptName + ".sh" )
-os.chmod( scriptName + ".sh", st.st_mode | stat.S_IEXEC)
-################################################
-
 cont = 0
 
 rpt = repeat
 while ( rpt > 0 ):
+
     cont = cont + 1
     rpt = rpt-1
+
+    scriptName = logPath + "condor/" + jobName + "_" + str(cont)
+
+    f = open( scriptName + ".sh", "w" )
+    f.write("#!/bin/bash\n")
+
+    # We transfer env variables to Condor environment
+    for key in os.environ.keys(): 
+        print( "export " + key + "=" + os.environ[key] +"\n" )
+        if key.find( "DATA") == 0:
+            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+            print( "export " + key + "=" + os.environ[key] +"\n" )
+        if key.find("GDML") == 0:
+            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+            print( "export " + key + "=" + os.environ[key] +"\n" )
+        if key.find("GEOMETRY") >= 0:
+            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+            print( "export " + key + "=" + os.environ[key] +"\n" )
+        if key.find("REST") == 0:
+            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+            print( "export " + key + "=" + os.environ[key] +"\n" )
+        if key.find("G4") == 0:
+            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+        if key.find("PATH") == 0:
+            print( "export " + key + "=" + os.environ[key] +"\n" )
+            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+        if key.find("LD_LIBRARY_PATH") == 0:
+            print( "export " + key + "=" + os.environ[key] +"\n" )
+            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+        if key.find("GARFIELD_") == 0:
+            print( "export " + key + "=" + os.environ[key] +"\n" )
+            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+        if key.find("HEED_") == 0:
+            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+        if key.find("PWD") == 0:
+            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+
+    f.write("export USER="+ os.environ['USER']+"\n\n")
+    f.write("export RUN_NUMBER="+ str(idOffset+cont)+"\n\n")
+
+    command = "restG4 " + os.environ['PWD'] + "/" + cfgFile + " " + sectionName
+    f.write(  command + "\n" )
+    f.close()
+
+    st = os.stat( scriptName + ".sh" )
+    os.chmod( scriptName + ".sh", st.st_mode | stat.S_IEXEC)
+    ################################################
 
     g = open( scriptName + "_" + str(cont) + ".condor", "w" )
     g.write("Executable = " + scriptName + ".sh\n" )
