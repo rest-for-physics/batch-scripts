@@ -110,6 +110,9 @@ while ( rpt > 0 ):
     # We transfer env variables to Condor environment
     for key in os.environ.keys(): 
         print( "export " + key + "=" + os.environ[key] +"\n" )
+        if key.find( "HOME") == 0:
+            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+            print( "export " + key + "=" + os.environ[key] +"\n" )
         if key.find( "DATA") == 0:
             f.write( "export " + key + "=" + os.environ[key] +"\n" )
             print( "export " + key + "=" + os.environ[key] +"\n" )
