@@ -22,7 +22,7 @@
 #######
 ################################################################
 
-# Check if gedit is running
+# Check if rsync is running
 # -x flag only match processes whose name (or command line if -f is
 # specified) exactly match the pattern. 
 
