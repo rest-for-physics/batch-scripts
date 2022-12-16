@@ -20,6 +20,8 @@ fileList = ""
 
 onlyScripts=0
 
+requestTime = 0
+
 runStart = 1000
 
 def ProcessFilesInList( file_list ):
@@ -67,6 +69,8 @@ def ProcessFilesInList( file_list ):
 		g.write("Log = " + scriptName + ".log\n" )
 		g.write("Output = " + scriptName + ".out\n" )
 		g.write("Error = " + scriptName + ".err\n" )
+		if( requestTime > 0 ):
+			g.write("+RequestRuntime = " + str(requestTime) + "\n" )
 		g.write("Queue\n" )
 		g.close()
 
@@ -207,6 +211,8 @@ def ProcessWithoutFile( ):
 		g.write("Log = " + scriptName + ".log\n" )
 		g.write("Output = " + scriptName + ".out\n" )
 		g.write("Error = " + scriptName + ".err\n" )
+		if( requestTime > 0 ):
+			g.write("+RequestRuntime = " + str(requestTime) + "\n" )
 		g.write("Queue\n" )
 		g.close()
 
@@ -334,11 +340,15 @@ if narg < 2:
 	print " It defines the number of repetitions the restManager command should"
 	print " trigger. Only active if not -f FILENAME was given."
 	print ""
-	print " -t or --runStart N :"
+	print " -m or --runStart N :"
 	print " It defines the value for the first run number. It will set variable"
 	print " CONDOR_RUN to a different value in each iteration."
 	print " The run file should define <parameter name=\"runNumber\" value=\"${CONDOR_RUN}\" />"
 	print " Only active if not -f FILENAME was given."
+	print ""
+	print " -t or --requestTime T[hours] :"
+	print " This parameter will allow to extend the requested CPU time (NAF-IAXO default is 3-hours)"
+	print " The argument T must be given in hours"
 	print "----------------------------------------------------------------" 
 	print ""
 
@@ -358,9 +368,11 @@ for x in range(narg-1):
 	if ( sys.argv[x+1] == "--jobName" or sys.argv[x+1] == "-j" ):
 		jobName = sys.argv[x+2]
 
-	if ( sys.argv[x+1] == "--runStart" or sys.argv[x+1] == "-t" ):
+	if ( sys.argv[x+1] == "--runStart" or sys.argv[x+1] == "-m" ):
 		runStart = int(sys.argv[x+2])
-		print( "Run start: " + str( runStart ) )
+
+	if ( sys.argv[x+1] == "--requestTime" or sys.argv[x+1] == "-t" ):
+		requestTime = int(sys.argv[x+2]) * 3600
 
 	if ( sys.argv[x+1] == "--fileList" or sys.argv[x+1] == "-f" ):
 		fileList = sys.argv[x+2]
