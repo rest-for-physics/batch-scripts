@@ -20,6 +20,8 @@ fileList = ""
 
 onlyScripts=0
 
+runStart = 1000
+
 def ProcessFilesInList( file_list ):
 	cont = 0
 	for fileToProcess in file_list:
@@ -161,7 +163,6 @@ def ProcessWithoutFile( ):
 	rpt = repeat
 	cont = 0
 	while ( rpt > 0 ):
-		cont = cont + 1
 		rpt = rpt-1
 
 		scriptName = "condor/" + jobName+"_"+str(cont)
@@ -186,6 +187,7 @@ def ProcessWithoutFile( ):
 				f.write( "export " + key + "=" + os.environ[key] +"\n" )
 
 		f.write("export USER="+ os.environ['USER']+"\n\n")
+		f.write( "export CONDOR_RUN=" + str(runStart + cont) +"\n" )
 
 		command = os.environ['REST_PATH'] + "/bin/restManager --c " + os.environ['PWD'] + "/" + cfgFile
 		if sectionName != "":
@@ -210,6 +212,7 @@ def ProcessWithoutFile( ):
 
 		if onlyScripts == 0:
 			print "---> Launching : " + command
+			print ( "---> Run number : " + str(runStart + cont) )
 
 			condorCommand = "condor_submit " + scriptName + ".condor" 
 			print "Condor command : " + condorCommand
@@ -330,6 +333,12 @@ if narg < 2:
 	print " -r or --repeat N :"
 	print " It defines the number of repetitions the restManager command should"
 	print " trigger. Only active if not -f FILENAME was given."
+	print ""
+	print " -t or --runStart N :"
+	print " It defines the value for the first run number. It will set variable"
+	print " CONDOR_RUN to a different value in each iteration."
+	print " The run file should define <parameter name=\"runNumber\" value=\"${CONDOR_RUN}\" />"
+	print " Only active if not -f FILENAME was given."
 	print "----------------------------------------------------------------" 
 	print ""
 
@@ -343,8 +352,15 @@ for x in range(narg-1):
 	if ( sys.argv[x+1] == "--sleep" or sys.argv[x+1] == "-s" ):
 		sleep = int( sys.argv[x+2] )
 
+	if ( sys.argv[x+1] == "--repeat" or sys.argv[x+1] == "-r" ):
+		repeat = int( sys.argv[x+2] )
+
 	if ( sys.argv[x+1] == "--jobName" or sys.argv[x+1] == "-j" ):
 		jobName = sys.argv[x+2]
+
+	if ( sys.argv[x+1] == "--runStart" or sys.argv[x+1] == "-t" ):
+		runStart = int(sys.argv[x+2])
+		print( "Run start: " + str( runStart ) )
 
 	if ( sys.argv[x+1] == "--fileList" or sys.argv[x+1] == "-f" ):
 		fileList = sys.argv[x+2]
