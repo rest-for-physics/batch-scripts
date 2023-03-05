@@ -169,7 +169,7 @@ def ProcessWithoutFile( ):
 	while ( rpt > 0 ):
 		rpt = rpt-1
 
-		scriptName = "condor/" + jobName+"_"+str(cont)
+		scriptName = "condor/" + jobName+"_"+str(runStart+cont)
 
 		f = open( scriptName + ".sh", "w" )
 		f.write("#!/bin/bash\n")
