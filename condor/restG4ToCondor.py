@@ -1,180 +1,130 @@
-#!/usr/bin/python
-# -*- coding: iso-8859-15 -*-
+# Author: Luis Obis (lobis@unizar.es)
 
-# This script generates the plots from the spectras
-# J. Galan - Javier.Galan.Lacarra@cern.ch
-# 29 - Sep- 2016
+# Usage:
+# python3 restG4ToCondor.py --rml simulation.rml --n-jobs 10 --output-dir /path/to/output/dir
+# arguments not specified to this script (--rml, --n-jobs, ...) are passed directly to restG4
 
-import os,sys, time, commands
-import stat
+import random
+import os
+import subprocess
+from pathlib import Path
+import argparse
+from datetime import datetime
 
-calrun = 0
-bckrun = 0
-sleep = 1
-repeat = 1
+# REST_PATH environment variable must be set
+try:
+    REST_PATH = os.environ["REST_PATH"]
+except KeyError:
+    raise Exception("REST_PATH environment variable must be set")
 
-narg = len(sys.argv)
-cfgFile = ""
-sectionName = ""
-jobName = ""
-idOffset = 0
-logPath = ""
+restG4 = f"{REST_PATH}/bin/restG4"
+# assert this binary exists
+subprocess.run([restG4, "--help"], check=True)
 
+# --n-jobs is the number of batch jobs to submit (default 1)
+# --rml is the rml config file to use
+# The positional arguments are the arguments for the restG4 binary
 
-if narg < 2:
-    print ""
-    print "----------------------------------------------------------------" 
-    print ""
-    print " This program launches restG4 job to condor	    "
-    print " (condor scripts will be created under condor/ directory)"
-    print ""
-    print " The usual restG4 command is : restG4 CONFIG_FILE [SECTION_NAME]"
-    print ""
-    print " Values in brackets [] are optional"
-    print ""
-    print " Usage : restG4ToCondor.py -c CONFIG_FILE "
-    print ""
-    print " - Options : " 
-    print " ----------- " 
-    print ""
-    print " -n or --sectionName SECTION_NAME :"
-    print " Defines the name of the section to be used from CONFIG_FILE"
-    print ""
-    print " -r or --repeat REPEAT_VALUE :"
-    print " This option defines the number of simulations we will launch"
-    print ""
-    print " -i or --initialRun VALUE :"
-    print " An integer number to introduce the first run number."
-    print ""
-    print " -s or --sleep SLEEP_TIME :"
-    print " Time delay between launching 2 reapeated jobs (default is 5 seconds)"
-    print " Random seed is connected to the time stamp"
-    print ""
-    print " -j or --jobName JOB_NAME :"
-    print " JOB_NAME defines the name of scripts and output files stored under condor/"
-    print ""
-    print "----------------------------------------------------------------" 
-    print ""
-    sys.exit(1)
+parser = argparse.ArgumentParser(description="Launch restG4 jobs on condor")
+parser.add_argument("--n-jobs", type=int, default=1)
+parser.add_argument("--rml", type=str, default="simulation.rml")
+parser.add_argument("--output-dir", type=str, default="")
 
-onlyScripts=0
+timestamp_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+parser.add_argument("--name", type=str, default=f"restG4_{timestamp_str}")
 
-for x in range(narg-1):
-    if ( sys.argv[x+1] == "--repeat" or sys.argv[x+1] == "-r" ):
-        repeat = int(sys.argv[x+2])
+args, restG4_args = parser.parse_known_args()
 
-    if ( sys.argv[x+1] == "--cfgFile" or sys.argv[x+1] == "-c" ):
-        cfgFile = sys.argv[x+2]
+# create output directory if it does not exist
 
-    if ( sys.argv[x+1] == "--logPath" or sys.argv[x+1] == "-l" ):
-        logPath = sys.argv[x+2]
+user = os.environ["USER"]
+if user == "":
+    raise Exception("Could not find current user")
 
-    if ( sys.argv[x+1] == "--idOffset" or sys.argv[x+1] == "-i" ):
-        idOffset = int(sys.argv[x+2])
+condor_dir = Path(f"/nfs/dust/iaxo/user/{user}") / "condor" / args.name
+condor_dir.mkdir(parents=True, exist_ok=True)
 
-    if ( sys.argv[x+1] == "--sleep" or sys.argv[x+1] == "-s" ):
-        sleep = int( sys.argv[x+2] )
+output_dir = args.output_dir
+if output_dir == "":
+    output_dir = condor_dir / "output"
 
-    if ( sys.argv[x+1] == "--sectionName" or sys.argv[x+1] == "-n" ):
-        sectionName = sys.argv[x+2]
+output_dir = Path(output_dir)
+output_dir.mkdir(parents=True, exist_ok=True)
 
-    if ( sys.argv[x+1] == "--jobName" or sys.argv[x+1] == "-j" ):
-        jobName = sys.argv[x+2]
+print(f"Condor directory: {condor_dir}")
 
-    if ( sys.argv[x+1] == "--onlyScripts" or sys.argv[x+1] == "-o" ):
-        onlyScripts = 1
+sub_files = []
+seeds = set()
+
+# with 30000 seconds as requested, do not run over 8h (in restG4 parameters)
+
+for i in range(args.n_jobs):
+    def generate_seed():
+        return random.randint(0, 2 ** 30)
 
 
-if not os.path.exists(logPath+"condor"):
-    os.makedirs(logPath+"condor")
+    seed = generate_seed()
+    # make sure the seed is unique between batch jobs
+    while seed in seeds:
+        seed = generate_seed()
 
-if jobName == "":
-    jobName = cfgFile[cfgFile.rfind("/")+1:cfgFile.rfind(".rml")]
+    output_file = f"{output_dir}/output_{i}.root"
+    command = f"""{restG4} {args.rml} --output {output_file} --seed {seed} {" ".join(restG4_args)} """
+    print(command)
 
-################################################
-# Creating job environment and execution command
-################################################
-cont = 0
+    script_content = f"""
+{command}
+    """
+    name_script = f"""{str(condor_dir / "scripts")}/script_{i}.sh"""
+    name_job = f"""{str(condor_dir / "jobs")}/job_{i}.sub"""
 
-rpt = repeat
-while ( rpt > 0 ):
+    stdout_dir = condor_dir / "stdout"
+    stderr_dir = condor_dir / "stderr"
+    logs_dir = condor_dir / "logs"
 
-    cont = cont + 1
-    rpt = rpt-1
+    stdout_dir.mkdir(parents=True, exist_ok=True)
+    stderr_dir.mkdir(parents=True, exist_ok=True)
+    logs_dir.mkdir(parents=True, exist_ok=True)
 
-    scriptName = logPath + "condor/" + jobName + "_" + str(cont)
+    submission_file_content = f"""
+    executable   = {name_script}
+    arguments    =
+    getenv       = True
 
-    f = open( scriptName + ".sh", "w" )
-    f.write("#!/bin/bash\n")
+    output       = {str(stdout_dir)}/output_{i}
+    error        = {str(stderr_dir)}/error_{i}
+    log          = {str(logs_dir)}/log_{i}
 
-    # We transfer env variables to Condor environment
-    for key in os.environ.keys(): 
-        print( "export " + key + "=" + os.environ[key] +"\n" )
-        if key.find( "HOME") == 0:
-            f.write( "export " + key + "=" + os.environ[key] +"\n" )
-            print( "export " + key + "=" + os.environ[key] +"\n" )
-        if key.find( "DATA") == 0:
-            f.write( "export " + key + "=" + os.environ[key] +"\n" )
-            print( "export " + key + "=" + os.environ[key] +"\n" )
-        if key.find("GDML") == 0:
-            f.write( "export " + key + "=" + os.environ[key] +"\n" )
-            print( "export " + key + "=" + os.environ[key] +"\n" )
-        if key.find("GEOMETRY") >= 0:
-            f.write( "export " + key + "=" + os.environ[key] +"\n" )
-            print( "export " + key + "=" + os.environ[key] +"\n" )
-        if key.find("REST") == 0:
-            f.write( "export " + key + "=" + os.environ[key] +"\n" )
-            print( "export " + key + "=" + os.environ[key] +"\n" )
-        if key.find("G4") == 0:
-            f.write( "export " + key + "=" + os.environ[key] +"\n" )
-        if key.find("PATH") == 0:
-            print( "export " + key + "=" + os.environ[key] +"\n" )
-            f.write( "export " + key + "=" + os.environ[key] +"\n" )
-        if key.find("LD_LIBRARY_PATH") == 0:
-            print( "export " + key + "=" + os.environ[key] +"\n" )
-            f.write( "export " + key + "=" + os.environ[key] +"\n" )
-        if key.find("GARFIELD_") == 0:
-            print( "export " + key + "=" + os.environ[key] +"\n" )
-            f.write( "export " + key + "=" + os.environ[key] +"\n" )
-        if key.find("HEED_") == 0:
-            f.write( "export " + key + "=" + os.environ[key] +"\n" )
-        if key.find("PWD") == 0:
-            f.write( "export " + key + "=" + os.environ[key] +"\n" )
+    request_cpus   = 1
 
-    f.write("export USER="+ os.environ['USER']+"\n\n")
-    f.write("export RUN_NUMBER="+ str(idOffset+cont)+"\n\n")
+    +RequestRuntime = 30000
 
-    command = "restG4 " + os.environ['PWD'] + "/" + cfgFile + " " + sectionName
-    f.write(  command + "\n" )
-    f.close()
+    should_transfer_files = yes
 
-    st = os.stat( scriptName + ".sh" )
-    os.chmod( scriptName + ".sh", st.st_mode | stat.S_IEXEC)
-    ################################################
+    queue
+    """
 
-    g = open( scriptName + "_" + str(cont) + ".condor", "w" )
-    g.write("Executable = " + scriptName + ".sh\n" )
-    g.write("Arguments = \n" )
-    g.write("Log = " + scriptName + "_" + str(cont) + ".log\n" )
-    g.write("Output = " + scriptName + "_" + str(cont) + ".out\n" )
-    g.write("Error = " + scriptName + "_" + str(cont) + ".err\n" )
-    g.write("queue 1\n" )
-    g.close()
+    # write script_content to file, create parents directory if needed
 
-    if onlyScripts == 0:
-        print "---> Launching : " + command
+    os.makedirs(os.path.dirname(name_script), exist_ok=True)
+    with open(name_script, "w") as f:
+        f.write(script_content)
 
-        condorCommand = "condor_submit " + scriptName + "_" + str(cont) + ".condor" 
-        print "Condor command : " + condorCommand
+    os.makedirs(os.path.dirname(name_job), exist_ok=True)
+    with open(name_job, "w") as f:
+        f.write(submission_file_content)
 
-        print "Waiting " + str(sleep) + " seconds to launch next job" 
-        time.sleep(sleep)
+    sub_files.append(name_job)
 
-        print commands.getstatusoutput( condorCommand )
-    else:
-        print "---> Produced condor script : " + str( scriptName ) + "_" + str(cont) + ".condor"
-        print "---> To launch : " + command
+print(f"Created {len(sub_files)} submission files")
+for sub_file in sub_files:
+    print(sub_file)
+    subprocess.run(["condor_submit", sub_file], check=True)
 
-    print ""
-print ""
+print(f"Output will be stored in {output_dir}")
 
+# create a symbolic link to the latest output directory
+
+latest_link = Path(os.environ["HOME"]) / "condor" / "latest"
+latest_link.unlink(missing_ok=True)
+latest_link.symlink_to(condor_dir)
