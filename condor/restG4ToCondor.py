@@ -10,6 +10,7 @@ import subprocess
 from pathlib import Path
 import argparse
 from datetime import datetime
+import re
 
 # REST_PATH environment variable must be set
 try:
@@ -34,21 +35,18 @@ parser.add_argument("--time", type=str, default="1h0m0s")
 
 
 def parse_time_string(time_string) -> int:
-    # Split the time_string into components (hours, minutes, seconds)
-    components = time_string.split('h')
-    hours = int(components[0])
+    components = re.findall(r'(\d+)([hms])', time_string)
+    total_seconds = 0
 
-    if 'm' in components[1]:
-        minutes, seconds = components[1].split('m')
-        minutes = int(minutes)
-    else:
-        minutes = 0
-        seconds = components[1]
+    for value, unit in components:
+        value = int(value)
+        if unit == 'h':
+            total_seconds += value * 3600
+        elif unit == 'm':
+            total_seconds += value * 60
+        elif unit == 's':
+            total_seconds += value
 
-    seconds = int(seconds[:-1]) if 's' in seconds else 0
-
-    # Calculate the total time in seconds
-    total_seconds = hours * 3600 + minutes * 60 + seconds
     return total_seconds
 
 
