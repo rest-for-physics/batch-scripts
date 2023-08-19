@@ -29,11 +29,37 @@ parser = argparse.ArgumentParser(description="Launch restG4 jobs on condor")
 parser.add_argument("--n-jobs", type=int, default=1)
 parser.add_argument("--rml", type=str, default="simulation.rml")
 parser.add_argument("--output-dir", type=str, default="")
+parser.add_argument("--dry-run", action="store_true", help="Set this flag for a dry run")
+parser.add_argument("--time", type=str, default="1h0m0s")
+
+
+def parse_time_string(time_string) -> int:
+    # Split the time_string into components (hours, minutes, seconds)
+    components = time_string.split('h')
+    hours = int(components[0])
+
+    if 'm' in components[1]:
+        minutes, seconds = components[1].split('m')
+        minutes = int(minutes)
+    else:
+        minutes = 0
+        seconds = components[1]
+
+    seconds = int(seconds[:-1]) if 's' in seconds else 0
+
+    # Calculate the total time in seconds
+    total_seconds = hours * 3600 + minutes * 60 + seconds
+    return total_seconds
+
 
 timestamp_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 parser.add_argument("--name", type=str, default=f"restG4_{timestamp_str}")
 
 args, restG4_args = parser.parse_known_args()
+
+dry_run = args.dry_run == True
+
+time_in_seconds = parse_time_string(args.time)
 
 # create output directory if it does not exist
 
@@ -58,6 +84,12 @@ seeds = set()
 
 # with 30000 seconds as requested, do not run over 8h (in restG4 parameters)
 
+rml = Path(args.rml)
+if not rml.exists():
+    raise Exception(f"Could not find rml file {args.rml}")
+
+rml = rml.resolve()
+
 for i in range(args.n_jobs):
     def generate_seed():
         return random.randint(0, 2 ** 30)
@@ -69,7 +101,7 @@ for i in range(args.n_jobs):
         seed = generate_seed()
 
     output_file = f"{output_dir}/output_{i}.root"
-    command = f"""{restG4} {args.rml} --output {output_file} --seed {seed} {" ".join(restG4_args)} """
+    command = f"""{restG4} {args.rml} --output {output_file} --seed {seed} --time {time_in_seconds}s {" ".join(restG4_args)}"""
     print(command)
 
     script_content = f"""
@@ -97,7 +129,7 @@ for i in range(args.n_jobs):
 
     request_cpus   = 1
 
-    +RequestRuntime = 30000
+    +RequestRuntime = {time_in_seconds + 600}
 
     should_transfer_files = yes
 
@@ -117,8 +149,11 @@ for i in range(args.n_jobs):
     sub_files.append(name_job)
 
 print(f"Created {len(sub_files)} submission files")
+
 for sub_file in sub_files:
     print(sub_file)
+    if dry_run:
+        continue
     subprocess.run(["condor_submit", sub_file], check=True)
 
 print(f"Output will be stored in {output_dir}")
