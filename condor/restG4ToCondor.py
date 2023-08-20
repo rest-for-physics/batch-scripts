@@ -64,6 +64,8 @@ merge = args.merge == True
 
 time_in_seconds = parse_time_string(args.time)
 
+number_of_jobs = args.n_jobs
+
 name = args.name
 # create output directory if it does not exist
 
@@ -81,6 +83,9 @@ if output_dir == "":
 output_dir = Path(output_dir)
 output_dir.mkdir(parents=True, exist_ok=True)
 
+tmp_dir = condor_dir / "tmp"
+tmp_dir.mkdir(parents=True, exist_ok=True)
+
 print(f"Condor directory: {condor_dir}")
 
 sub_files = []
@@ -94,7 +99,7 @@ if not rml.exists():
 
 rml = rml.resolve()
 
-for i in range(args.n_jobs):
+for i in range(number_of_jobs):
     def generate_seed():
         return random.randint(0, 2 ** 30)
 
@@ -105,7 +110,13 @@ for i in range(args.n_jobs):
         seed = generate_seed()
 
     output_file = f"{output_dir}/output_{i}.root"
-    command = f"""{restG4} {args.rml} --output {output_file} --seed {seed} --time {time_in_seconds}s {" ".join(restG4_args)}"""
+    tmp_file = f"{tmp_dir}/output_{i}.root"
+
+    command = f"""
+{restG4} {args.rml} --output {tmp_file} --seed {seed} --time {time_in_seconds}s {" ".join(restG4_args)}
+mv {tmp_file} {output_file}
+"""
+
     print(command)
 
     script_content = f"""
@@ -191,7 +202,7 @@ log          = {str(logs_dir)}/log_merge
 
 request_cpus   = 1
 
-+RequestRuntime = {time_in_seconds + 600}
++RequestRuntime = {max(number_of_jobs * 60, time_in_seconds) + 600}
 
 should_transfer_files = yes
 
