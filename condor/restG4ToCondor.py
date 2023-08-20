@@ -19,6 +19,8 @@ except KeyError:
     raise Exception("REST_PATH environment variable must be set")
 
 restG4 = f"{REST_PATH}/bin/restG4"
+restRoot = f"{REST_PATH}/bin/restRoot"
+
 # assert this binary exists
 subprocess.run([restG4, "--help"], check=True)
 
@@ -30,8 +32,9 @@ parser = argparse.ArgumentParser(description="Launch restG4 jobs on condor")
 parser.add_argument("--n-jobs", type=int, default=1)
 parser.add_argument("--rml", type=str, default="simulation.rml")
 parser.add_argument("--output-dir", type=str, default="")
-parser.add_argument("--dry-run", action="store_true", help="Set this flag for a dry run")
 parser.add_argument("--time", type=str, default="1h0m0s")
+parser.add_argument("--dry-run", action="store_true", help="Set this flag for a dry run")
+parser.add_argument("--merge", action="store_true", help="merge files using 'restGeant4_MergeRestG4Files' macro")
 
 
 def parse_time_string(time_string) -> int:
@@ -57,15 +60,18 @@ args, restG4_args = parser.parse_known_args()
 
 dry_run = args.dry_run == True
 
+merge = args.merge == True
+
 time_in_seconds = parse_time_string(args.time)
 
+name = args.name
 # create output directory if it does not exist
 
 user = os.environ["USER"]
 if user == "":
     raise Exception("Could not find current user")
 
-condor_dir = Path(f"/nfs/dust/iaxo/user/{user}") / "condor" / args.name
+condor_dir = Path(f"/nfs/dust/iaxo/user/{user}") / "condor" / name
 condor_dir.mkdir(parents=True, exist_ok=True)
 
 output_dir = args.output_dir
@@ -117,21 +123,21 @@ for i in range(args.n_jobs):
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     submission_file_content = f"""
-    executable   = {name_script}
-    arguments    =
-    getenv       = True
+executable   = {name_script}
+arguments    =
+getenv       = True
 
-    output       = {str(stdout_dir)}/output_{i}
-    error        = {str(stderr_dir)}/error_{i}
-    log          = {str(logs_dir)}/log_{i}
+output       = {str(stdout_dir)}/output_{i}
+error        = {str(stderr_dir)}/error_{i}
+log          = {str(logs_dir)}/log_{i}
 
-    request_cpus   = 1
+request_cpus   = 1
 
-    +RequestRuntime = {time_in_seconds + 600}
++RequestRuntime = {time_in_seconds + 600}
 
-    should_transfer_files = yes
+should_transfer_files = yes
 
-    queue
+queue
     """
 
     # write script_content to file, create parents directory if needed
@@ -148,11 +154,71 @@ for i in range(args.n_jobs):
 
 print(f"Created {len(sub_files)} submission files")
 
-for sub_file in sub_files:
-    print(sub_file)
-    if dry_run:
-        continue
-    subprocess.run(["condor_submit", sub_file], check=True)
+if not merge:
+    for sub_file in sub_files:
+        print(sub_file)
+        if dry_run:
+            continue
+        subprocess.run(["condor_submit", sub_file], check=True)
+else:
+    # merge command
+    command = f"""{restRoot} -q "$REST_PATH/macros/geant4/REST_Geant4_MergeRestG4Files.C(\"merge.root\", \"merge\")" {condor_dir}/{name}.root {output_dir}"""
+    print(command)
+
+    script_content = f"""
+    {command}
+        """
+    name_script = f"""{str(condor_dir / "scripts")}/script_merge.sh"""
+    name_job = f"""{str(condor_dir / "jobs")}/job_merge.sub"""
+
+    stdout_dir = condor_dir / "stdout"
+    stderr_dir = condor_dir / "stderr"
+    logs_dir = condor_dir / "logs"
+
+    stdout_dir.mkdir(parents=True, exist_ok=True)
+    stderr_dir.mkdir(parents=True, exist_ok=True)
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
+    submission_file_content = f"""
+executable   = {name_script}
+arguments    =
+getenv       = True
+
+output       = {str(stdout_dir)}/output_merge
+error        = {str(stderr_dir)}/error_merge
+log          = {str(logs_dir)}/log_merge
+
+request_cpus   = 1
+
++RequestRuntime = {time_in_seconds + 600}
+
+should_transfer_files = yes
+
+queue
+    """
+
+    jobs = "\n".join([f"JOB job_{i} {sub_file}" for i, sub_file in enumerate(sub_files)])
+    dag_submission_content = f"""
+{jobs}
+
+JOB job_merge {name_job}
+PARENT {" ".join([f"job_{i}" for i in range(len(sub_files))])} CHILD job_merge
+"""
+
+    name_dag_file = f"{condor_dir}/dag"
+
+    with open(name_script, "w") as f:
+        f.write(script_content)
+
+    with open(name_job, "w") as f:
+        f.write(submission_file_content)
+
+    with open(name_dag_file, "w") as f:
+        f.write(dag_submission_content)
+
+    print(name_daq_file)
+    if not dry_run:
+        subprocess.run(["condor_submit_dag", name_dag_file])
 
 print(f"Output will be stored in {output_dir}")
 
