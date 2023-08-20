@@ -99,6 +99,8 @@ if not rml.exists():
 
 rml = rml.resolve()
 
+time_additional = 3600  # give 1h of margin
+
 for i in range(number_of_jobs):
     def generate_seed():
         return random.randint(0, 2 ** 30)
@@ -113,6 +115,7 @@ for i in range(number_of_jobs):
     tmp_file = f"{tmp_dir}/output_{i}.root"
 
     command = f"""
+source {REST_PATH}/thisREST.sh
 {restG4} {args.rml} --output {tmp_file} --seed {seed} --time {time_in_seconds}s {" ".join(restG4_args)}
 mv {tmp_file} {output_file}
 """
@@ -144,7 +147,7 @@ log          = {str(logs_dir)}/log_{i}
 
 request_cpus   = 1
 
-+RequestRuntime = {time_in_seconds + 600}
++RequestRuntime = {time_in_seconds + time_additional}
 
 should_transfer_files = yes
 
@@ -173,7 +176,9 @@ if not merge:
         subprocess.run(["condor_submit", sub_file], check=True)
 else:
     # merge command
-    command = f"""{restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{condor_dir}/{name}.root\\\", \\\"{output_dir}\\\")" 
+    command = f"""
+source {REST_PATH}/thisREST.sh
+{restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{condor_dir}/{name}.root\\\", \\\"{output_dir}\\\")" 
 """
     print(command)
 
@@ -202,7 +207,7 @@ log          = {str(logs_dir)}/log_merge
 
 request_cpus   = 1
 
-+RequestRuntime = {max(number_of_jobs * 60, time_in_seconds) + 600}
++RequestRuntime = {max(number_of_jobs * 60, time_in_seconds) + time_additional}
 
 should_transfer_files = yes
 
