@@ -203,7 +203,7 @@ queue
 {jobs}
 
 JOB job_merge {name_job}
-PARENT {" ".join([f"job_{i}" for i in range(len(sub_files))])} CHILD job_merge
+{"\n".join([f"PARENT job_{i} CHILD job_merge" for i in range(len(sub_files))])}
 """
 
     name_dag_file = f"{condor_dir}/dag"
