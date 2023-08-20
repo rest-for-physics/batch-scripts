@@ -162,7 +162,7 @@ if not merge:
         subprocess.run(["condor_submit", sub_file], check=True)
 else:
     # merge command
-    command = f"""{restRoot} -q "$REST_PATH/macros/geant4/REST_Geant4_MergeRestG4Files.C(\"{condor_dir}/{name}.root\", \"{output_dir}\")" 
+    command = f"""{restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{condor_dir}/{name}.root\\\", \\\"{output_dir}\\\")" 
 """
     print(command)
 
