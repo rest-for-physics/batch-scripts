@@ -199,11 +199,12 @@ queue
     """
 
     jobs = "\n".join([f"JOB job_{i} {sub_file}" for i, sub_file in enumerate(sub_files)])
+    parent_child_relations = "\n".join([f"PARENT job_{i} CHILD job_merge" for i in range(len(sub_files))])
     dag_submission_content = f"""
 {jobs}
 
 JOB job_merge {name_job}
-{"\n".join([f"PARENT job_{i} CHILD job_merge" for i in range(len(sub_files))])}
+{parent_child_relations}
 """
 
     name_dag_file = f"{condor_dir}/dag"
