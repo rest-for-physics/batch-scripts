@@ -2,7 +2,7 @@
 
 # Usage:
 # python3 restG4ToCondor.py --rml simulation.rml --n-jobs 10 --output-dir /path/to/output/dir
-# arguments not specified to this script (--rml, --n-jobs, ...) are passed directly to restG4
+# arguments not specified to this script (not --rml, --n-jobs, ...) are passed directly to restG4
 
 import random
 import os
@@ -24,15 +24,14 @@ restRoot = f"{REST_PATH}/bin/restRoot"
 # assert this binary exists
 subprocess.run([restG4, "--help"], check=True)
 
-# --n-jobs is the number of batch jobs to submit (default 1)
-# --rml is the rml config file to use
 # The positional arguments are the arguments for the restG4 binary
 
 parser = argparse.ArgumentParser(description="Launch restG4 jobs on condor")
-parser.add_argument("--n-jobs", type=int, default=1)
-parser.add_argument("--rml", type=str, default="simulation.rml")
-parser.add_argument("--output-dir", type=str, default="")
-parser.add_argument("--time", type=str, default="1h0m0s")
+parser.add_argument("--n-jobs", type=int, default=1, help="Number of jobs to submit")
+parser.add_argument("--rml", type=str, default="simulation.rml", help="RML config file")
+parser.add_argument("--output-dir", type=str, default="", help="Output directory")
+parser.add_argument("--time", type=str, default="1h0m0s", help="Time per job (e.g. 1h0m0s)")
+parser.add_argument("--memory", type=int, default="4000", help="Memory in MB")
 parser.add_argument("--dry-run", action="store_true", help="Set this flag for a dry run")
 parser.add_argument("--merge", action="store_true", help="merge files using 'restGeant4_MergeRestG4Files' macro")
 
@@ -63,6 +62,7 @@ dry_run = args.dry_run == True
 merge = args.merge == True
 
 time_in_seconds = parse_time_string(args.time)
+memory_in_mb = args.memory
 
 number_of_jobs = args.n_jobs
 
@@ -146,6 +146,7 @@ error        = {str(stderr_dir)}/error_{i}
 log          = {str(logs_dir)}/log_{i}
 
 request_cpus   = 1
+request_memory = {memory_in_mb}
 
 +RequestRuntime = {time_in_seconds + time_additional}
 
@@ -206,7 +207,7 @@ error        = {str(stderr_dir)}/error_merge
 log          = {str(logs_dir)}/log_merge
 
 request_cpus   = 1
-request_memory = 4000 # 4 GB
+request_memory = {memory_in_mb}
 
 +RequestRuntime = {max(number_of_jobs * 60, time_in_seconds) + time_additional}
 
