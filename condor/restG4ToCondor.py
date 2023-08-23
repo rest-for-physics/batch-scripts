@@ -206,6 +206,7 @@ error        = {str(stderr_dir)}/error_merge
 log          = {str(logs_dir)}/log_merge
 
 request_cpus   = 1
+request_memory = 4000 # 4 GB
 
 +RequestRuntime = {max(number_of_jobs * 60, time_in_seconds) + time_additional}
 
