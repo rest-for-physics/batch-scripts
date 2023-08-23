@@ -31,7 +31,7 @@ parser.add_argument("--n-jobs", type=int, default=1, help="Number of jobs to sub
 parser.add_argument("--rml", type=str, default="simulation.rml", help="RML config file")
 parser.add_argument("--output-dir", type=str, default="", help="Output directory")
 parser.add_argument("--time", type=str, default="1h0m0s", help="Time per job (e.g. 1h0m0s)")
-parser.add_argument("--memory", type=int, default="4000", help="Memory in MB")
+parser.add_argument("--memory", type=int, default="2048", help="Memory in MB")
 parser.add_argument("--dry-run", action="store_true", help="Set this flag for a dry run")
 parser.add_argument("--merge", action="store_true", help="merge files using 'restGeant4_MergeRestG4Files' macro")
 
