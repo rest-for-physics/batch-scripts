@@ -52,6 +52,15 @@ def parse_time_string(time_string) -> int:
     return total_seconds
 
 
+def partition_number(number, chunk_size=100):
+    # returns a list of lists, each list contains a chunk of numbers
+    partitions = []
+    for start in range(0, number, chunk_size):
+        end = min(start + chunk_size - 1, number - 1)
+        partitions.append(list(range(start, end + 1)))
+    return partitions
+
+
 timestamp_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 parser.add_argument("--name", type=str, default=f"restG4_{timestamp_str}")
 
@@ -176,62 +185,87 @@ if not merge:
             continue
         subprocess.run(["condor_submit", sub_file], check=True)
 else:
-    # merge command
-    command = f"""
+    chunk_size = 100
+    partitions = partition_number(number_of_jobs, chunk_size=100)
+    for partition in partitions:
+        sub_files_partition = [sub_files[i] for i in partition]
+        partition_min, partition_max = partition[0], partition[-1]
+        partition_suffix = f"{partition_min}_{partition_max}"
+        partition_merge_files_directory = str(condor_dir / f"merge/partition_{partition_suffix}")
+        partition_merge_file_name = str(condor_dir / f"merge/last/merge_{partition_suffix}.root")
+        os.makedirs(partition_merge_files_directory, exist_ok=True)
+        os.makedirs(os.path.dirname(partition_merge_file_name), exist_ok=True)
+        move_files_command = "\n".join(
+            [f"mv --no-clobber {output_dir}/output_{i}.root {partition_merge_files_directory}" for i in partition])
+        # merge command
+        command = f"""
 source {REST_PATH}/thisREST.sh
-{restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{condor_dir}/{name}.root\\\", \\\"{output_dir}\\\")" 
-"""
-    print(command)
+{move_files_command}
+{restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{partition_merge_file_name}\\\", \\\"{partition_merge_files_directory}\\\")" 
+    """
+        print(command)
 
-    script_content = f"""
-    {command}
-        """
-    name_script = f"""{str(condor_dir / "scripts")}/script_merge.sh"""
-    name_job = f"""{str(condor_dir / "jobs")}/job_merge.sub"""
+        script_content = f"""
+        {command}
+            """
+        name_script = f"""{str(condor_dir / "scripts")}/script_merge_{partition_suffix}.sh"""
+        name_job = f"""{str(condor_dir / "jobs")}/job_merge_{partition_suffix}.sub"""
 
-    stdout_dir = condor_dir / "stdout"
-    stderr_dir = condor_dir / "stderr"
-    logs_dir = condor_dir / "logs"
+        stdout_dir = condor_dir / "stdout"
+        stderr_dir = condor_dir / "stderr"
+        logs_dir = condor_dir / "logs"
 
-    stdout_dir.mkdir(parents=True, exist_ok=True)
-    stderr_dir.mkdir(parents=True, exist_ok=True)
-    logs_dir.mkdir(parents=True, exist_ok=True)
+        stdout_dir.mkdir(parents=True, exist_ok=True)
+        stderr_dir.mkdir(parents=True, exist_ok=True)
+        logs_dir.mkdir(parents=True, exist_ok=True)
 
-    submission_file_content = f"""
+        submission_file_content = f"""
 executable   = {name_script}
 arguments    =
 getenv       = True
 
-output       = {str(stdout_dir)}/output_merge
-error        = {str(stderr_dir)}/error_merge
-log          = {str(logs_dir)}/log_merge
+output       = {str(stdout_dir)}/output_merge_{partition_suffix}
+error        = {str(stderr_dir)}/error_merge_{partition_suffix}
+log          = {str(logs_dir)}/log_merge_{partition_suffix}
 
 request_cpus   = 1
 {memory_sub_string}
 
-+RequestRuntime = {max(number_of_jobs * 60, time_in_seconds) + time_additional}
++RequestRuntime = {max(chunk_size * 60, time_in_seconds) + time_additional}
 
 should_transfer_files = yes
 
 queue
-    """
+"""
+
+        with open(name_script, "w") as f:
+            f.write(script_content)
+
+        with open(name_job, "w") as f:
+            f.write(submission_file_content)
 
     jobs = "\n".join([f"JOB job_{i} {sub_file}" for i, sub_file in enumerate(sub_files)])
-    parent_child_relations = "\n".join([f"PARENT job_{i} CHILD job_merge" for i in range(len(sub_files))])
+    parent_child_relations_all = []
+    merge_jobs = []
+    for partition in partitions:
+        partition_min, partition_max = partition[0], partition[-1]
+        partition_suffix = f"{partition_min}_{partition_max}"
+        parent_child_relations = "\n".join([f"PARENT job_{i} CHILD job_merge_{partition_suffix}" for i in partition])
+        parent_child_relations_all.append(parent_child_relations)
+
+        name_merge_job = f"""{str(condor_dir / "jobs")}/job_merge_{partition_suffix}.sub"""
+        merge_jobs.append(f"JOB job_merge_{partition_suffix} {name_merge_job}")
+
+    parent_child_relations = "\n".join(parent_child_relations_all)
+    merge_jobs = "\n".join(merge_jobs)
     dag_submission_content = f"""
 {jobs}
 
-JOB job_merge {name_job}
+{merge_jobs}
 {parent_child_relations}
 """
 
     name_dag_file = f"{condor_dir}/dag"
-
-    with open(name_script, "w") as f:
-        f.write(script_content)
-
-    with open(name_job, "w") as f:
-        f.write(submission_file_content)
 
     with open(name_dag_file, "w") as f:
         f.write(dag_submission_content)
