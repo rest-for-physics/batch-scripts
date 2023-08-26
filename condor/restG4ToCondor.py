@@ -306,13 +306,12 @@ queue
         partition_suffix = f"{partition_min}_{partition_max}"
         parent_child_relations = "\n".join([f"PARENT job_{i} CHILD job_merge_{partition_suffix}" for i in partition])
         parent_child_relations_all.append(parent_child_relations)
+        parent_child_relations_all.append(f"PARENT job_merge_{partition_suffix} CHILD job_merge")
 
         name_merge_job = f"""{str(condor_dir / "jobs")}/job_merge_{partition_suffix}.sub"""
         merge_jobs.append(f"JOB job_merge_{partition_suffix} {name_merge_job}")
 
     merge_jobs.append(f"JOB job_merge {name_job}")
-    parent_child_relations_all.append(
-        "\n".join([f"PARENT job_merge_{partition_suffix} CHILD job_merge" for partition_suffix in partitions]))
     parent_child_relations = "\n".join(parent_child_relations_all)
     merge_jobs = "\n".join(merge_jobs)
     dag_submission_content = f"""
