@@ -28,7 +28,7 @@ def ProcessFilesInList( file_list ):
 	cont = 0
 	for fileToProcess in file_list:
 
-		scriptName = "condor/" + jobName+"_"+str(cont)
+		scriptName = "condor/" + jobName + "/" + str(cont)
 
 		f = open( scriptName + ".sh", "w" )
 		f.write("#!/bin/bash\n")
@@ -169,7 +169,7 @@ def ProcessWithoutFile( ):
 	while ( rpt > 0 ):
 		rpt = rpt-1
 
-		scriptName = "condor/" + jobName+"_"+str(runStart+cont)
+		scriptName = "condor/" + jobName + "/" + str(runStart+cont)
 
 		f = open( scriptName + ".sh", "w" )
 		f.write("#!/bin/bash\n")
@@ -307,11 +307,11 @@ for x in range(narg-1):
 		onlyScripts = 1
 
 
-if not os.path.exists("condor"):
-	os.makedirs("condor")
-
 if jobName == "":
 	jobName = cfgFile[cfgFile.rfind("/")+1:cfgFile.rfind(".rml")]
+
+if not os.path.exists("condor/" + jobName):
+	os.makedirs("condor/" + jobName)
 
 if cfgFile == "":
 	print "Please specify a RML config file list using -c flag." 
