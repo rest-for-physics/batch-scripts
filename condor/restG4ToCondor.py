@@ -20,6 +20,7 @@ except KeyError:
 
 restG4 = f"{REST_PATH}/bin/restG4"
 restRoot = f"{REST_PATH}/bin/restRoot"
+restManager = f"{REST_PATH}/bin/restManager"
 
 # assert this binary exists
 subprocess.run([restG4, "--help"], check=True)
@@ -35,6 +36,7 @@ parser.add_argument("--memory", type=int, default="0", help="Memory in MB. If 0,
 parser.add_argument("--dry-run", action="store_true", help="Set this flag for a dry run")
 parser.add_argument("--merge", action="store_true", help="merge files using 'restGeant4_MergeRestG4Files' macro")
 parser.add_argument("--merge-chunk", type=int, default=100, help="Number of files to merge at once")
+parser.add_argument("--rml-analysis", type=str, default=None, help="RML config file")
 
 
 def parse_time_string(time_string) -> int:
@@ -250,7 +252,6 @@ queue
             f.write(submission_file_content)
 
     # merge all files
-
     final_merge_output_name = str(condor_dir / f"{name}.root")
     command = f"""
 source {REST_PATH}/thisREST.sh
@@ -260,10 +261,10 @@ rm {intermediate_merge_files_directory}/*.root
     print(command)
 
     script_content = f"""
-        {command}
+{command}
             """
-    name_script = f"""{str(condor_dir / "scripts")}/script_merge.sh"""
-    name_job = f"""{str(condor_dir / "jobs")}/job_merge.sub"""
+    name_script_merge = f"""{str(condor_dir / "scripts")}/script_merge.sh"""
+    name_job_merge = f"""{str(condor_dir / "jobs")}/job_merge.sub"""
 
     stdout_dir = condor_dir / "stdout"
     stderr_dir = condor_dir / "stderr"
@@ -274,7 +275,7 @@ rm {intermediate_merge_files_directory}/*.root
     logs_dir.mkdir(parents=True, exist_ok=True)
 
     submission_file_content = f"""
-executable   = {name_script}
+executable   = {name_script_merge}
 arguments    =
 getenv       = True
 
@@ -292,11 +293,61 @@ should_transfer_files = yes
 queue
 """
 
-    with open(name_script, "w") as f:
+    with open(name_script_merge, "w") as f:
         f.write(script_content)
 
-    with open(name_job, "w") as f:
+    with open(name_job_merge, "w") as f:
         f.write(submission_file_content)
+
+    # analyze job
+    analyze_merge = args.rml_analysis is not None and merge
+    if analyze_merge:
+        # replace ending ".root" with ".analysis.root"
+        final_merge_output_name_analysis = final_merge_output_name[:-5] + ".analysis.root"
+        command = f"""
+source {REST_PATH}/thisREST.sh
+{restManager} --c {args.rml_analysis} --i {final_merge_output_name} --o {final_merge_output_name_analysis}
+"""
+        print(command)
+
+        script_content = f"""
+{command}
+            """
+        name_script_analysis = f"""{str(condor_dir / "scripts")}/script_analysis.sh"""
+        name_job_analysis = f"""{str(condor_dir / "jobs")}/job_analysis.sub"""
+
+        stdout_dir = condor_dir / "stdout"
+        stderr_dir = condor_dir / "stderr"
+        logs_dir = condor_dir / "logs"
+
+        stdout_dir.mkdir(parents=True, exist_ok=True)
+        stderr_dir.mkdir(parents=True, exist_ok=True)
+        logs_dir.mkdir(parents=True, exist_ok=True)
+
+        submission_file_content = f"""
+executable   = {name_script_analysis}
+arguments    =
+getenv       = True
+
+output       = {str(stdout_dir)}/output_analysis
+error        = {str(stderr_dir)}/error_analysis
+log          = {str(logs_dir)}/log_analysis
+
+request_cpus   = 1
+{memory_sub_string}
+
++RequestRuntime = {time_in_seconds + time_additional}
+
+should_transfer_files = yes
+
+queue
+        """
+
+        with open(name_script_analysis, "w") as f:
+            f.write(script_content)
+
+        with open(name_job_analysis, "w") as f:
+            f.write(submission_file_content)
 
     jobs = "\n".join([f"JOB job_{i} {sub_file}" for i, sub_file in enumerate(sub_files)])
     parent_child_relations_all = []
@@ -311,7 +362,10 @@ queue
         name_merge_job = f"""{str(condor_dir / "jobs")}/job_merge_{partition_suffix}.sub"""
         merge_jobs.append(f"JOB job_merge_{partition_suffix} {name_merge_job}")
 
-    merge_jobs.append(f"JOB job_merge {name_job}")
+    merge_jobs.append(f"JOB job_merge {name_job_merge}")
+    if analyze_merge:
+        merge_jobs.append(f"JOB job_analysis {name_job_analysis}")
+        parent_child_relations_all.append(f"PARENT job_merge CHILD job_analysis")
     parent_child_relations = "\n".join(parent_child_relations_all)
     merge_jobs = "\n".join(merge_jobs)
     dag_submission_content = f"""
