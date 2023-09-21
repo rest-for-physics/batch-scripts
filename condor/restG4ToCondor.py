@@ -36,7 +36,10 @@ parser.add_argument("--memory", type=int, default="0", help="Memory in MB. If 0,
 parser.add_argument("--dry-run", action="store_true", help="Set this flag for a dry run")
 parser.add_argument("--merge", action="store_true", help="merge files using 'restGeant4_MergeRestG4Files' macro")
 parser.add_argument("--merge-chunk", type=int, default=100, help="Number of files to merge at once")
-parser.add_argument("--rml-analysis", type=str, default=None, help="RML config file")
+parser.add_argument("--rml-processing", type=str, default=None,
+                    help="RML config file for the processing (restManager). If not specified, no processing is performed")
+parser.add_argument("--processing-before-merge", action="store_true",
+                    help="Run the processing on individual files before merging them")
 
 
 def parse_time_string(time_string) -> int:
@@ -126,9 +129,16 @@ for i in range(number_of_jobs):
     output_file = f"{output_dir}/output_{i}.root"
     tmp_file = f"{tmp_dir}/output_{i}.root"
 
+    run_processing = args.rml_processing is not None and args.processing_before_merge
+    processing_command = ""
+    if run_processing:
+        processing_command = f"""
+        {restManager} --c {args.rml_processing} --i {tmp_file} --o {tmp_file}
+        """
     command = f"""
 source {REST_PATH}/thisREST.sh
 {restG4} {args.rml} --output {tmp_file} --seed {seed} --time {time_in_seconds}s {" ".join(restG4_args)}
+{processing_command}
 mv {tmp_file} {output_file}
 """
 
@@ -208,7 +218,7 @@ else:
 source {REST_PATH}/thisREST.sh
 {move_files_command}
 {restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{partition_merge_file_name}\\\", \\\"{partition_merge_files_directory}\\\")"
-rm {partition_merge_files_directory}/*.root 
+rm {partition_merge_files_directory}/*.root
     """
         print(command)
 
@@ -256,7 +266,7 @@ queue
     command = f"""
 source {REST_PATH}/thisREST.sh
 {restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{final_merge_output_name}\\\", \\\"{str(intermediate_merge_files_directory)}\\\")"
-rm {intermediate_merge_files_directory}/*.root 
+rm {intermediate_merge_files_directory}/*.root
     """
     print(command)
 
@@ -300,13 +310,13 @@ queue
         f.write(submission_file_content)
 
     # analyze job
-    analyze_merge = args.rml_analysis is not None and merge
-    if analyze_merge:
+    processing_merge = args.rml_processing is not None and merge and not args.processing_before_merge
+    if processing_merge:
         # replace ending ".root" with ".analysis.root"
         final_merge_output_name_analysis = final_merge_output_name[:-5] + ".analysis.root"
         command = f"""
 source {REST_PATH}/thisREST.sh
-{restManager} --c {args.rml_analysis} --i {final_merge_output_name} --o {final_merge_output_name_analysis}
+{restManager} --c {args.rml_processing} --i {final_merge_output_name} --o {final_merge_output_name_analysis}
 """
         print(command)
 
@@ -363,7 +373,7 @@ queue
         merge_jobs.append(f"JOB job_merge_{partition_suffix} {name_merge_job}")
 
     merge_jobs.append(f"JOB job_merge {name_job_merge}")
-    if analyze_merge:
+    if processing_merge:
         merge_jobs.append(f"JOB job_analysis {name_job_analysis}")
         parent_child_relations_all.append(f"PARENT job_merge CHILD job_analysis")
     parent_child_relations = "\n".join(parent_child_relations_all)
