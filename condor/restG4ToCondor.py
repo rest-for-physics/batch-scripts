@@ -38,7 +38,7 @@ parser.add_argument("--merge", action="store_true", help="merge files using 'res
 parser.add_argument("--merge-chunk", type=int, default=100, help="Number of files to merge at once")
 parser.add_argument("--rml-processing", type=str, default=None,
                     help="RML config file for the processing (restManager). If not specified, no processing is performed")
-parser.add_argument("--processing-before-merge", action="store_true",
+parser.add_argument("--processing-after-merge", action="store_true",
                     help="Run the processing on individual files before merging them")
 
 
@@ -129,7 +129,7 @@ for i in range(number_of_jobs):
     output_file = f"{output_dir}/output_{i}.root"
     tmp_file = f"{tmp_dir}/output_{i}.root"
 
-    run_processing = args.rml_processing is not None and args.processing_before_merge
+    run_processing = args.rml_processing is not None and not args.processing_after_merge
     processing_command = ""
     if run_processing:
         processing_command = f"""
@@ -310,7 +310,7 @@ queue
         f.write(submission_file_content)
 
     # analyze job
-    processing_merge = args.rml_processing is not None and merge and not args.processing_before_merge
+    processing_merge = args.rml_processing is not None and merge and args.processing_after_merge
     if processing_merge:
         # replace ending ".root" with ".analysis.root"
         final_merge_output_name_analysis = final_merge_output_name[:-5] + ".analysis.root"
