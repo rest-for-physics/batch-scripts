@@ -346,7 +346,7 @@ log          = {str(logs_dir)}/log_analysis
 request_cpus   = 1
 {memory_sub_string}
 
-+RequestRuntime = {time_in_seconds + time_additional}
++RequestRuntime = {max(time_in_seconds + time_additional, 3600 * 24)}
 
 should_transfer_files = yes
 
