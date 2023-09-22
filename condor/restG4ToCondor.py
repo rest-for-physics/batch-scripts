@@ -135,22 +135,13 @@ for i in range(number_of_jobs):
         processing_command = f"""
         {restManager} --c {args.rml_processing} --i {tmp_file} --o {tmp_file}
         """
-    clean_home_rest_command = ""
-    if True:  # maybe add an option for this in the future
-        # if we do not do this periodically we run into issues due to disk space
-        clean_home_rest_command = f"""
-        rm -rf {os.environ["HOME"]}/.rest
-        """
     command = f"""
 source {REST_PATH}/thisREST.sh
 {restG4} {args.rml} --output {tmp_file} --seed {seed} --time {time_in_seconds}s {" ".join(restG4_args)}
 {processing_command}
-{clean_home_rest_command}
 mv {tmp_file} {output_file}
 """
-
     print(command)
-
     script_content = f"""
 {command}
     """
@@ -403,6 +394,9 @@ queue
 
     print(name_dag_file)
     if not dry_run:
+        # clear the ~/.rest directory
+        clean_home_rest_command = f"""rm -rf {os.environ["HOME"]}/.rest"""
+        os.system(clean_home_rest_command)
         subprocess.run(["condor_submit_dag", name_dag_file])
 
 print(f"Output will be stored in {output_dir}")
