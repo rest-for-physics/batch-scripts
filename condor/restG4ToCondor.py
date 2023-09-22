@@ -274,6 +274,7 @@ queue
 source {REST_PATH}/thisREST.sh
 {restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{final_merge_output_name}\\\", \\\"{str(intermediate_merge_files_directory)}\\\")"
 rm {intermediate_merge_files_directory}/*.root
+touch {str(condor_dir / "OK")}
     """
     print(command)
 
