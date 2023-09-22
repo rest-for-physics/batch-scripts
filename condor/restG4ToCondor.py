@@ -274,7 +274,6 @@ queue
 source {REST_PATH}/thisREST.sh
 {restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{final_merge_output_name}\\\", \\\"{str(intermediate_merge_files_directory)}\\\")"
 rm {intermediate_merge_files_directory}/*.root
-touch {str(condor_dir / "OK")}
     """
     print(command)
 
@@ -322,9 +321,13 @@ queue
     if processing_merge:
         # replace ending ".root" with ".analysis.root"
         final_merge_output_name_analysis = final_merge_output_name[:-5] + ".analysis.root"
+        filename_no_path = os.path.basename(final_merge_output_name_analysis)
+        # same file name but in tmp directory
+        final_merge_output_name_analysis_tmp = str(tmp_dir / filename_no_path)
         command = f"""
 source {REST_PATH}/thisREST.sh
-{restManager} --c {args.rml_processing} --i {final_merge_output_name} --o {final_merge_output_name_analysis}
+{restManager} --c {args.rml_processing} --i {final_merge_output_name} --o {final_merge_output_name_analysis_tmp}
+mv {final_merge_output_name_analysis_tmp} {final_merge_output_name_analysis}
 """
         print(command)
 
