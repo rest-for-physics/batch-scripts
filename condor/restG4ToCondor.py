@@ -58,7 +58,7 @@ def parse_time_string(time_string) -> int:
     return total_seconds
 
 
-def partition_number(number):
+def partition_number(number, chunk_size):
     # returns a list of lists, each list contains a chunk of numbers
     partitions = []
     for start in range(0, number, chunk_size):
