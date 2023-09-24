@@ -35,7 +35,7 @@ parser.add_argument("--time", type=str, default="1h0m0s", help="Time per job (e.
 parser.add_argument("--memory", type=int, default="0", help="Memory in MB. If 0, use default value")
 parser.add_argument("--dry-run", action="store_true", help="Set this flag for a dry run")
 parser.add_argument("--merge", action="store_true", help="merge files using 'restGeant4_MergeRestG4Files' macro")
-parser.add_argument("--merge-chunk", type=int, default=100, help="Number of files to merge at once")
+parser.add_argument("--merge-chunk", type=int, default=25, help="Number of files to merge at once")
 parser.add_argument("--rml-processing", type=str, default=None,
                     help="RML config file for the processing (restManager). If not specified, no processing is performed")
 parser.add_argument("--processing-before-merge", action="store_true",
@@ -58,7 +58,7 @@ def parse_time_string(time_string) -> int:
     return total_seconds
 
 
-def partition_number(number, chunk_size=100):
+def partition_number(number):
     # returns a list of lists, each list contains a chunk of numbers
     partitions = []
     for start in range(0, number, chunk_size):
