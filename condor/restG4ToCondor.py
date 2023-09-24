@@ -382,7 +382,6 @@ queue
     merge_jobs = "\n".join(merge_jobs)
     dag_submission_content = f"""
 {jobs}
-
 {merge_jobs}
 {parent_child_relations}
 """
