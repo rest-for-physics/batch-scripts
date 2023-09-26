@@ -394,7 +394,10 @@ queue
     print(name_dag_file)
     if not dry_run:
         # clear the ~/.rest directory
-        clean_home_rest_command = f"""rm -rf {os.environ["HOME"]}/.rest"""
+        # WARNING: If we don't do this, we run out of disk space.
+        # WARNING: Currently we need to manually generate some of the files in .rest (condor cannot do it due to permissions)
+        # See https://github.com/rest-for-physics/framework/issues/481
+        clean_home_rest_command = f"""rm -rf {os.environ["HOME"]}/.rest/gdml"""
         os.system(clean_home_rest_command)
         subprocess.run(["condor_submit_dag", name_dag_file])
 
