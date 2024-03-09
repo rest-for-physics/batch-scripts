@@ -4,6 +4,8 @@
 # python3 restG4ToCondor.py --rml simulation.rml --n-jobs 10 --output-dir /path/to/output/dir
 # arguments not specified to this script (not --rml, --n-jobs, ...) are passed directly to restG4
 
+from __future__ import annotations
+
 import random
 import os
 import subprocess
@@ -38,6 +40,7 @@ parser.add_argument("--merge", action="store_true", help="merge files using 'res
 parser.add_argument("--merge-chunk", type=int, default=25, help="Number of files to merge at once")
 parser.add_argument("--rml-processing", type=str, default=None,
                     help="RML config file for the processing (restManager). If not specified, no processing is performed")
+parser.add_argument("--move-analysis", type=str, default=None, help="Move the analysis file to the specified directory")
 parser.add_argument("--processing-before-merge", action="store_true",
                     help="Run the processing on individual files before merging them")
 
@@ -320,6 +323,11 @@ source {REST_PATH}/thisREST.sh
 {restManager} --c {args.rml_processing} --i {final_merge_output_name} --o {final_merge_output_name_analysis_tmp}
 mv {final_merge_output_name_analysis_tmp} {final_merge_output_name_analysis}
 """
+        if args.move_analysis is not None:
+            command += f"""
+mv {final_merge_output_name_analysis} {args.move_analysis}
+"""
+
         print(command)
 
         script_content = f"""
