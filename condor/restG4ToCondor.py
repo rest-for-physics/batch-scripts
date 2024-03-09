@@ -324,6 +324,8 @@ source {REST_PATH}/thisREST.sh
 mv {final_merge_output_name_analysis_tmp} {final_merge_output_name_analysis}
 """
         if args.move_analysis is not None:
+            # create the directory if it does not exist
+            os.makedirs(args.move_analysis, exist_ok=True)
             command += f"""
 mv {final_merge_output_name_analysis} {args.move_analysis}
 """
