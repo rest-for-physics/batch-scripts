@@ -140,7 +140,7 @@ for i in range(number_of_jobs):
         """
     command = f"""
 source {REST_PATH}/thisREST.sh
-{restG4} {args.rml} --output {tmp_file} --seed {seed} --time {time_in_seconds}s {" ".join(restG4_args)}
+{restG4} {args.rml} --output {tmp_file} --seed {seed} --runNumber {i} --time {time_in_seconds}s {" ".join(restG4_args)}
 {processing_command}
 mv {tmp_file} {output_file}
 """
