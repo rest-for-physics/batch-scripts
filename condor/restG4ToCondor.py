@@ -43,6 +43,8 @@ parser.add_argument("--rml-processing", type=str, default=None,
 parser.add_argument("--move-analysis", type=str, default=None, help="Move the analysis file to the specified directory")
 parser.add_argument("--processing-before-merge", action="store_true",
                     help="Run the processing on individual files before merging them")
+# submit multiple env variables
+parser.add_argument("--env", nargs="+", default=[], help="Environment variables to submit to condor")
 
 
 def parse_time_string(time_string) -> int:
@@ -83,6 +85,12 @@ time_in_seconds = parse_time_string(args.time)
 memory_sub_string = f"request_memory = {args.memory}" if args.memory != 0 else ""
 
 number_of_jobs = args.n_jobs
+
+# split and store env variables in dict
+env_vars = {}
+for env_var in args.env:
+    key, value = env_var.split("=")
+    env_vars[key] = value
 
 name = args.name
 # create output directory if it does not exist
@@ -140,6 +148,7 @@ for i in range(number_of_jobs):
         """
     command = f"""
 source {REST_PATH}/thisREST.sh
+{f"export {' '.join([f'{key}={value}' for key, value in env_vars.items()])}" if env_vars else ""}
 {restG4} {args.rml} --output {tmp_file} --seed {seed} --runNumber {i} --time {time_in_seconds}s {" ".join(restG4_args)}
 {processing_command}
 mv {tmp_file} {output_file}
