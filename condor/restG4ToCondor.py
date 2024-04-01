@@ -146,9 +146,11 @@ for i in range(number_of_jobs):
         processing_command = f"""
         {restManager} --c {args.rml_processing} --i {tmp_file} --o {tmp_file}
         """
+
+    env_var_string = '\n'.join([f"export {key}={value}" for key, value in env_vars.items()])
     command = f"""
 source {REST_PATH}/thisREST.sh
-{f"export {' '.join([f'{key}={value}' for key, value in env_vars.items()])}" if env_vars else ""}
+{env_var_string}
 {restG4} {args.rml} --output {tmp_file} --seed {seed} --runNumber {i} --time {time_in_seconds}s {" ".join(restG4_args)}
 {processing_command}
 mv {tmp_file} {output_file}
