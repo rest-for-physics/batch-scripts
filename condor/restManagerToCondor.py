@@ -1,236 +1,135 @@
-#!/usr/bin/python
-# -*- coding: iso-8859-15 -*-
+# Author: Luis Obis (lobis@unizar.es)
 
-# J. Galan - Javier.Galan.Lacarra@cern.ch
-# 2 - Oct- 2016
+# Usage:
+# python3 restManagerToCondor.py --rml simulation.rml --input-file input.root --name my_analysis
+# arguments not specified to this script (not --rml, --n-jobs, ...) are passed directly to restG4
 
-import os,sys, time, commands
-import stat, glob
+from __future__ import annotations
 
-calrun = 0
-bckrun = 0
-sleep = 1
-repeat = 1
+import os
+import subprocess
+from pathlib import Path
+import argparse
+from datetime import datetime
 
-narg = len(sys.argv)
-cfgFile = ""
-sectionName = ""
-jobName = ""
-fileList = ""
+# REST_PATH environment variable must be set
+try:
+    REST_PATH = os.environ["REST_PATH"]
+except KeyError:
+    raise Exception("REST_PATH environment variable must be set")
 
-onlyScripts=0
+restRoot = f"{REST_PATH}/bin/restRoot"
+restManager = f"{REST_PATH}/bin/restManager"
 
+# The positional arguments are the arguments for the restG4 binary
+timestamp_str = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
 
-if narg < 2:
-	print ""
-	print "----------------------------------------------------------------" 
-	print ""
-	print " This program launches restManager job to condor	    "
-	print " (condor scripts will be created under condor/ directory)"
-	print ""
-	print " The usual restManager command is : restManager --c CONFIG_FILE --f FILENAME"
-	print ""
-	print " Usage : restManagerToCondor.py -c CONFIG_FILE -f FILELIST/GLOBPATTERN "
-	print ""
-	print " Two options are allowed as input for the -f option "
-	print " - FILELIST. A file containing one file per line"
-	print " - GLOBPATTERN. A glob filename pattern using wild cards *?" 
-	print ""
-	print " In all cases full path file location should be given!"
-	print ""
-	print " - Other options : " 
-	print " ----------------- " 
-	print ""
-	print " -j or --jobName JOB_NAME :"
-	print " JOB_NAME defines the name of scripts and output files stored under condor/"
-	print ""
-	print " -s or --sleep SLEEP_TIME :"
-	print " Time delay between launching 2 reapeated jobs (default is 5 seconds)"
-	print " Random seed is connected to the time stamp"
-	print ""
-	print "----------------------------------------------------------------" 
-	print ""
+parser = argparse.ArgumentParser(description="Launch restG4 jobs on condor")
+parser.add_argument("--rml", type=str, default="simulation.rml", help="RML config file", required=True)
+parser.add_argument("--input-file", type=str, required=True, help="Input file")
+parser.add_argument("--output-dir", type=str, default="", help="Output directory")
+parser.add_argument("--memory", type=int, default="0", help="Memory in MB. If 0, use default value")
+parser.add_argument("--dry-run", action="store_true", help="Set this flag for a dry run")
+parser.add_argument("--env", nargs="+", default=[], help="Environment variables to submit to condor")
+parser.add_argument("--name", type=str, default=f"restG4_{timestamp_str}")
 
+args, restManager_args = parser.parse_known_args()
 
-for x in range(narg-1):
-	if ( sys.argv[x+1] == "--cfgFile" or sys.argv[x+1] == "-c" ):
-		cfgFile = sys.argv[x+2]
+dry_run = args.dry_run == True
 
-	if ( sys.argv[x+1] == "--sectionName" or sys.argv[x+1] == "-n" ):
-		sectionName = sys.argv[x+2]
+memory_sub_string = f"request_memory = {args.memory}" if args.memory != 0 else ""
 
-	if ( sys.argv[x+1] == "--sleep" or sys.argv[x+1] == "-s" ):
-		sleep = int( sys.argv[x+2] )
+# split and store env variables in dict
+env_vars = {}
+for env_var in args.env:
+    key, value = env_var.split("=")
+    env_vars[key] = value
 
-	if ( sys.argv[x+1] == "--jobName" or sys.argv[x+1] == "-j" ):
-		jobName = sys.argv[x+2]
+name = args.name
+# create output directory if it does not exist
 
-	if ( sys.argv[x+1] == "--fileList" or sys.argv[x+1] == "-f" ):
-		fileList = sys.argv[x+2]
+user = os.environ["USER"]
+if user == "":
+    raise Exception("Could not find current user")
 
-	if ( sys.argv[x+1] == "--onlyScripts" or sys.argv[x+1] == "-o" ):
-		onlyScripts = 1
+condor_dir = Path(f"/nfs/dust/iaxo/user/{user}") / "condor" / name
+condor_dir.mkdir(parents=True, exist_ok=True)
 
+output_dir = args.output_dir
+if output_dir == "":
+    output_dir = condor_dir / "output"
 
-if not os.path.exists("condor"):
-	os.makedirs("condor")
+output_dir = Path(output_dir)
+output_dir.mkdir(parents=True, exist_ok=True)
 
-if jobName == "":
-	jobName = cfgFile[cfgFile.rfind("/")+1:cfgFile.rfind(".rml")]
+tmp_dir = condor_dir / "tmp"
+tmp_dir.mkdir(parents=True, exist_ok=True)
 
-if cfgFile == "":
-	print "Please specify a RML config file list using -c flag." 
-	sys.exit( 1 )
+print(f"Condor directory: {condor_dir}")
 
-lines = []
-if (fileList != ""):
-	if( not "*" in fileList ):
-		f = open(fileList,'r')
-		for line in f.readlines():
-			if line[0] != "#":
-				lines.append( line )
-		f.close()
-	else:
-		print( "##" + fileList + "##" )
-		lines = glob.glob( fileList ) 
+rml = Path(args.rml)
+if not rml.exists():
+    raise Exception(f"Could not find rml file {args.rml}")
 
-print ( "Files to process:" )
-print ( lines )
+rml = rml.resolve()
 
-cont = 0
-for fileToProcess in lines:
+time_additional = 3600  # give 1h of margin
 
-	scriptName = "condor/" + jobName+"_"+str(cont)
+# same as input but instead of ending in .root ends in .analysis.root
+output_filename = Path(args.input_file).stem + ".analysis.root"
+output_file = str(output_dir / output_filename)
+tmp_file = f"{tmp_dir}/output.root"
 
-	f = open( scriptName + ".sh", "w" )
-	f.write("#!/bin/bash\n")
-	#f.write("export REST_DATAPATH="+ os.environ['REST_DATAPATH']+"\n")
+env_var_string = '\n'.join([f"export {key}={value}" for key, value in env_vars.items()])
+command = f"""
+source {REST_PATH}/thisREST.sh
+{env_var_string}
+{restManager} --c {args.rml} --i {args.input_file} --o {tmp_file} {" ".join(restManager_args)}
+mv {tmp_file} {output_file}
+"""
+print(command)
+script_content = f"""
+{command}
+"""
+name_script = f"""{str(condor_dir / "scripts")}/script.sh"""
+name_job = f"""{str(condor_dir / "jobs")}/job.sub"""
 
-	for key in os.environ.keys(): 
-		if key.find("REST") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-	 #   print( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("PATH") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("LD_LIBRARY_PATH") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("GARFIELD_") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("HEED_") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("PWD") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
+stdout_dir = condor_dir / "stdout"
+stderr_dir = condor_dir / "stderr"
+logs_dir = condor_dir / "logs"
 
-	f.write("export USER="+ os.environ['USER']+"\n\n")
+stdout_dir.mkdir(parents=True, exist_ok=True)
+stderr_dir.mkdir(parents=True, exist_ok=True)
+logs_dir.mkdir(parents=True, exist_ok=True)
 
-	command = os.environ['REST_PATH'] + "/bin/restManager --c " + os.environ['PWD'] + "/" + cfgFile + " --f " + fileToProcess
-	if sectionName != "":
-		command = command + " --n " + sectionName
-	f.write(  command + "\n" )
-	f.close()
+submission_file_content = f"""
+executable   = {name_script}
+arguments    =
+getenv       = True
 
-	st = os.stat( scriptName + ".sh" )
-	os.chmod( scriptName + ".sh", st.st_mode | stat.S_IEXEC)
+output       = {str(stdout_dir)}/output
+error        = {str(stderr_dir)}/error
+log          = {str(logs_dir)}/log
 
-	cont = cont + 1
+request_cpus   = 1
+{memory_sub_string}
 
-	g = open( scriptName + ".condor", "w" )
-	g.write("Universe   = vanilla\n" );
-	g.write("Executable = " + scriptName + ".sh\n" )
-	g.write("Arguments = \n" )
-	g.write("Log = " + scriptName + ".log\n" )
-	g.write("Output = " + scriptName + ".out\n" )
-	g.write("Error = " + scriptName + ".err\n" )
-	g.write("Queue\n" )
-	g.close()
++RequestRuntime = 43200
 
-	if onlyScripts == 0:
-		print "---> Launching : " + command
+should_transfer_files = yes
 
-		condorCommand = "condor_submit " + scriptName + ".condor" 
-		print "Condor command : " + condorCommand
+queue
+"""
 
-		print "Waiting " + str(sleep) + " seconds to launch next job" 
-		time.sleep(sleep)
+# write script_content to file, create parents directory if needed
 
-		print commands.getstatusoutput( condorCommand )
-	else:
-		print "---> Produced condor script : " + str( scriptName ) + "_" + str(cont) + "_" + str( jobName ) + ".condor"
-		print "---> To launch : " + command
+os.makedirs(os.path.dirname(name_script), exist_ok=True)
+with open(name_script, "w") as f:
+    f.write(script_content)
 
-if (fileList == "" ):
-	scriptName = "condor/" + jobName
+os.makedirs(os.path.dirname(name_job), exist_ok=True)
+with open(name_job, "w") as f:
+    f.write(submission_file_content)
 
-	f = open( scriptName + ".sh", "w" )
-	f.write("#!/bin/bash\n")
-	#f.write("export REST_DATAPATH="+ os.environ['REST_DATAPATH']+"\n")
-
-	for key in os.environ.keys(): 
-		if key.find( "HOME") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-			print( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find( "DATA") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-			print( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("GDML") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-			print( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("GEOMETRY") >= 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-			print( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("REST") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-			print( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("G4") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("PATH") == 0:
-			print( "export " + key + "=" + os.environ[key] +"\n" )
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("LD_LIBRARY_PATH") == 0:
-			print( "export " + key + "=" + os.environ[key] +"\n" )
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("GARFIELD_") == 0:
-			print( "export " + key + "=" + os.environ[key] +"\n" )
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("HEED_") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-		if key.find("PWD") == 0:
-			f.write( "export " + key + "=" + os.environ[key] +"\n" )
-
-	f.write("export USER="+ os.environ['USER']+"\n\n")
-
-	command = "restManager --c " + cfgFile
-	if sectionName != "":
-		command = command + " --n " + sectionName
-	f.write(  command + "\n" )
-	f.close()
-
-	st = os.stat( scriptName + ".sh" )
-	os.chmod( scriptName + ".sh", st.st_mode | stat.S_IEXEC)
-
-	cont = cont + 1
-
-	g = open( scriptName + ".condor", "w" )
-	g.write("Executable = " + scriptName + ".sh\n" )
-	g.write("Arguments = \n" )
-	g.write("Log = " + scriptName + ".log\n" )
-	g.write("Output = " + scriptName + ".out\n" )
-	g.write("Error = " + scriptName + ".err\n" )
-	g.write("Queue\n" )
-	g.close()
-
-	if onlyScripts == 0:
-		print "---> Launching : " + command
-
-		condorCommand = "condor_submit " + scriptName + ".condor" 
-		print "Condor command : " + condorCommand
-
-		print "Waiting " + str(sleep) + " seconds to launch next job" 
-		time.sleep(sleep)
-
-		print commands.getstatusoutput( condorCommand )
-	else:
-		print "---> Produced condor script : " + str( scriptName ) + "_" + str( jobName ) + ".condor"
-		print "---> To launch : " + command
-
-
+if not dry_run:
+    subprocess.run(["condor_submit", name_job], check=True)
