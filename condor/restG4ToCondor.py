@@ -230,7 +230,7 @@ else:
 source {REST_PATH}/thisREST.sh
 {move_files_command}
 {restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{partition_merge_file_name}\\\", \\\"{partition_merge_files_directory}\\\")"
-rm {partition_merge_files_directory}/*.root
+# rm {partition_merge_files_directory}/*.root
     """
         print(command)
 
@@ -278,7 +278,7 @@ queue
     command = f"""
 source {REST_PATH}/thisREST.sh
 {restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{final_merge_output_name}\\\", \\\"{str(intermediate_merge_files_directory)}\\\")"
-rm {intermediate_merge_files_directory}/*.root
+# rm {intermediate_merge_files_directory}/*.root
     """
     print(command)
 
