@@ -37,7 +37,7 @@ parser.add_argument("--time", type=str, default="1h0m0s", help="Time per job (e.
 parser.add_argument("--memory", type=int, default="0", help="Memory in MB. If 0, use default value")
 parser.add_argument("--dry-run", action="store_true", help="Set this flag for a dry run")
 parser.add_argument("--merge", action="store_true", help="merge files using 'restGeant4_MergeRestG4Files' macro")
-parser.add_argument("--merge-chunk", type=int, default=25, help="Number of files to merge at once")
+parser.add_argument("--merge-chunk", type=int, default=100, help="Number of files to merge at once")
 parser.add_argument("--rml-processing", type=str, default=None,
                     help="RML config file for the processing (restManager). If not specified, no processing is performed")
 parser.add_argument("--move-analysis", type=str, default=None, help="Move the analysis file to the specified directory")
