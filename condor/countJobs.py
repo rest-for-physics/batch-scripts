@@ -13,7 +13,7 @@ userName = os.environ['USER']
 
 jobList = os.popen("condor_q | grep " +str( userName)).read()
 
-nJobs = len(jobList.split('\n')) - 1
+nJobs = len(jobList.split('\n')) - 2
 
 print "Number of jobs running : " + str(nJobs)
 
