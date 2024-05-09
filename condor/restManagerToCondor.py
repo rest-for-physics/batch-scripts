@@ -21,6 +21,7 @@ fileList = ""
 onlyScripts=0
 
 requestTime = 0
+requestMemory = 0
 
 runStart = 1000
 
@@ -71,11 +72,13 @@ def ProcessFilesInList( file_list ):
 		g.write("Error = " + scriptName + ".err\n" )
 		if( requestTime > 0 ):
 			g.write("+RequestRuntime = " + str(requestTime) + "\n" )
+		if( requestMemory > 0 ):
+			g.write("+RequestMemory = " + str(requestMemory) + "\n" )
 		g.write("Queue\n" )
 		g.close()
 
 		if onlyScripts == 0:
-			print "---> Launching : " + command
+			print ("---> Launching : " + command)
 
 			condorCommand = "condor_submit " + scriptName + ".condor" 
 			print "Condor command : " + condorCommand
@@ -213,6 +216,8 @@ def ProcessWithoutFile( ):
 		g.write("Error = " + scriptName + ".err\n" )
 		if( requestTime > 0 ):
 			g.write("+RequestRuntime = " + str(requestTime) + "\n" )
+		if( requestMemory > 0 ):
+			g.write("+RequestMemory = " + str(requestMemory) + "\n" )
 		g.write("Queue\n" )
 		g.close()
 
@@ -275,6 +280,10 @@ if narg < 2:
 	print " -t or --requestTime T[hours] :"
 	print " This parameter will allow to extend the requested CPU time (NAF-IAXO default is 3-hours)"
 	print " The argument T must be given in hours"
+	print ""
+	print " -M or --requestMemory M[Mbytes] :"
+	print " This parameter will allow to extend the requested Memory (NAF-IAXO default is 1.5-Gbytes)"
+	print " The argument M must be given in Mbytes"
 	print "----------------------------------------------------------------" 
 	print ""
 
@@ -299,6 +308,9 @@ for x in range(narg-1):
 
 	if ( sys.argv[x+1] == "--requestTime" or sys.argv[x+1] == "-t" ):
 		requestTime = int(sys.argv[x+2]) * 3600
+
+	if ( sys.argv[x+1] == "--requestMemory" or sys.argv[x+1] == "-M" ):
+		requestMemory = int(sys.argv[x+2])
 
 	if ( sys.argv[x+1] == "--fileList" or sys.argv[x+1] == "-f" ):
 		fileList = sys.argv[x+2]
