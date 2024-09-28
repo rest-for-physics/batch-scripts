@@ -35,6 +35,8 @@ parser.add_argument("--rml", type=str, default="simulation.rml", help="RML confi
 parser.add_argument("--output-dir", type=str, default="", help="Output directory")
 parser.add_argument("--time", type=str, default="1h0m0s", help="Time per job (e.g. 1h0m0s)")
 parser.add_argument("--memory", type=int, default="0", help="Memory in MB. If 0, use default value")
+parser.add_argument("--threads", type=int, default="0",
+                    help="Number of threads to run simulation on (also requests this number of cpus + 1)")
 parser.add_argument("--dry-run", action="store_true", help="Set this flag for a dry run")
 parser.add_argument("--merge", action="store_true", help="merge files using 'restGeant4_MergeRestG4Files' macro")
 parser.add_argument("--merge-chunk", type=int, default=100, help="Number of files to merge at once")
@@ -85,6 +87,12 @@ time_in_seconds = parse_time_string(args.time)
 memory_sub_string = f"request_memory = {args.memory}" if args.memory != 0 else ""
 
 number_of_jobs = args.n_jobs
+
+threads = args.threads
+
+if threads > 0:
+    restG4_args.append(f"--threads")
+    restG4_args.append(str(threads))
 
 # split and store env variables in dict
 env_vars = {}
@@ -179,7 +187,7 @@ output       = {str(stdout_dir)}/output_{i}
 error        = {str(stderr_dir)}/error_{i}
 log          = {str(logs_dir)}/log_{i}
 
-request_cpus   = 1
+request_cpus   = {1 if threads == 0 else threads + 1}
 {memory_sub_string}
 
 +RequestRuntime = {time_in_seconds + time_additional}
