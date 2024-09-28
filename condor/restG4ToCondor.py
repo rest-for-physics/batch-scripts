@@ -81,7 +81,11 @@ args, restG4_args = parser.parse_known_args()
 
 dry_run = args.dry_run == True
 
+processing_before_merge = args.rml_processing is not None and args.processing_before_merge
+
 merge = args.merge == True
+if not merge and args.rml_processing is not None:
+    processing_before_merge = True
 
 time_in_seconds = parse_time_string(args.time)
 memory_sub_string = f"request_memory = {args.memory}" if args.memory != 0 else ""
@@ -148,7 +152,7 @@ for i in range(number_of_jobs):
     output_file = f"{output_dir}/output_{i}.root"
     tmp_file = f"{tmp_dir}/output_{i}.root"
 
-    run_processing = args.rml_processing is not None and args.processing_before_merge
+    run_processing = args.rml_processing is not None and processing_before_merge
     processing_command = ""
     if run_processing:
         processing_command = f"""
@@ -330,7 +334,7 @@ queue
         f.write(submission_file_content)
 
     # analyze job
-    processing_merge = args.rml_processing is not None and merge and not args.processing_before_merge
+    processing_merge = args.rml_processing is not None and merge and not processing_before_merge
     if processing_merge:
         # replace ending ".root" with ".analysis.root"
         final_merge_output_name_analysis = final_merge_output_name[:-5] + ".analysis.root"
