@@ -4,6 +4,15 @@
 # python3 restG4ToCondor.py --rml simulation.rml --n-jobs 10 --output-dir /path/to/output/dir
 # arguments not specified to this script (not --rml, --n-jobs, ...) are passed directly to restG4
 
+# Example:
+# python3 /path/batch-scripts/condor/restG4ToCondor.py --rml /path/SimulationTest.rml --memory 12000 --n-jobs 3 --time 10min --entries 3 --name muons_test --merge
+
+####################
+
+# CHECK YOUR PATHS!! IN THIS EXAMPLE: "/data/dust/user/porronla/programs/..."
+
+####################
+
 from __future__ import annotations
 
 import random
@@ -111,7 +120,7 @@ user = os.environ["USER"]
 if user == "":
     raise Exception("Could not find current user")
 
-condor_dir = Path(f"/nfs/dust/iaxo/user/{user}") / "condor" / name
+condor_dir = Path(f"/data/dust/user/{user}") / "condor" / name
 condor_dir.mkdir(parents=True, exist_ok=True)
 
 output_dir = args.output_dir
@@ -161,7 +170,16 @@ for i in range(number_of_jobs):
 
     env_var_string = '\n'.join([f"export {key}={value}" for key, value in env_vars.items()])
     command = f"""
-source {REST_PATH}/thisREST.sh
+source /afs/desy.de/user/p/porronla/.bashrc
+
+export LD_LIBRARY_PATH={REST_PATH}/lib:\
+/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
+/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64:\
+/data/dust/user/porronla/programs/root/root-6.26.10/root_install/lib:\
+/data/dust/user/porronla/programs/rest/latest/install/lib:\
+/data/dust/user/porronla/programs/garfield/install/lib64:\
+$LD_LIBRARY_PATH
+
 {env_var_string}
 {restG4} {args.rml} --output {tmp_file} --seed {seed} --runNumber {i} --time {time_in_seconds}s {" ".join(restG4_args)}
 {processing_command}
@@ -239,7 +257,16 @@ else:
             [f"mv --no-clobber {output_dir}/output_{i}.root {partition_merge_files_directory}" for i in partition])
         # merge command
         command = f"""
-source {REST_PATH}/thisREST.sh
+source /afs/desy.de/user/p/porronla/.bashrc
+
+export LD_LIBRARY_PATH={REST_PATH}/lib:\
+/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
+/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64:\
+/data/dust/user/porronla/programs/root/root-6.26.10/root_install/lib:\
+/data/dust/user/porronla/programs/rest/latest/install/lib:\
+/data/dust/user/porronla/programs/garfield/install/lib64:\
+$LD_LIBRARY_PATH
+
 {move_files_command}
 {restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{partition_merge_file_name}\\\", \\\"{partition_merge_files_directory}\\\")"
 # rm {partition_merge_files_directory}/*.root
@@ -288,7 +315,16 @@ queue
     # merge all files
     final_merge_output_name = str(condor_dir / f"{name}.root")
     command = f"""
-source {REST_PATH}/thisREST.sh
+source /afs/desy.de/user/p/porronla/.bashrc
+
+export LD_LIBRARY_PATH={REST_PATH}/lib:\
+/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
+/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64:\
+/data/dust/user/porronla/programs/root/root-6.26.10/root_install/lib:\
+/data/dust/user/porronla/programs/rest/latest/install/lib:\
+/data/dust/user/porronla/programs/garfield/install/lib64:\
+$LD_LIBRARY_PATH
+
 {restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{final_merge_output_name}\\\", \\\"{str(intermediate_merge_files_directory)}\\\")"
 # rm {intermediate_merge_files_directory}/*.root
     """
@@ -342,7 +378,16 @@ queue
         # same file name but in tmp directory
         final_merge_output_name_analysis_tmp = str(tmp_dir / filename_no_path)
         command = f"""
-source {REST_PATH}/thisREST.sh
+source /afs/desy.de/user/p/porronla/.bashrc
+
+export LD_LIBRARY_PATH={REST_PATH}/lib:\
+/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
+/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64:\
+/data/dust/user/porronla/programs/root/root-6.26.10/root_install/lib:\
+/data/dust/user/porronla/programs/rest/latest/install/lib:\
+/data/dust/user/porronla/programs/garfield/install/lib64:\
+$LD_LIBRARY_PATH
+
 {restManager} --c {args.rml_processing} --i {final_merge_output_name} --o {final_merge_output_name_analysis_tmp}
 mv {final_merge_output_name_analysis_tmp} {final_merge_output_name_analysis}
 """
