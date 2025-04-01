@@ -1,0 +1,31 @@
+####################
+
+# Example of .bashrc that is loaded in restG4ToCondor.py
+# CHECK YOUR PATHS!! IN THIS EXAMPLE: "/data/dust/user/porronla/programs/..."
+
+####################
+
+bash -c "source /data/dust/user/porronla/programs/root/root-6.26.10/root_build/bin/thisroot.sh"
+
+source /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/bin/geant4.sh
+
+export G4NEUTRONHPDATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/G4NDL4.6
+export G4LEDATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/G4EMLOW8.0
+export G4LEVELGAMMADATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/PhotonEvaporation5.7
+export G4RADIOACTIVEDATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/RadioactiveDecay5.6
+export G4PARTICLEXSDATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/G4PARTICLEXS4.0
+export G4PIIDATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/G4PII1.3
+export G4REALSURFACEDATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/RealSurface2.2
+export G4SAIDXSDATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/G4SAIDDATA2.0
+export G4ABLADATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/G4ABLA3.1
+export G4INCLDATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/G4INCL1.0
+export G4ENSDFSTATEDATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/G4ENSDFSTATE2.3
+export G4TENDLDATA=/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/v11.0.3_data/G4TENDL1.4
+
+export XercesC_INCLUDE_DIR=/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/include
+export XercesC_LIBRARY=/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64/libxerces-c.so
+export LD_LIBRARY_PATH=/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64:$LD_LIBRARY_PATH
+
+source /data/dust/user/porronla/programs/garfield/install/share/Garfield/setupGarfield.sh
+
+source /data/dust/user/porronla/programs/rest/latest/install/thisREST.sh
