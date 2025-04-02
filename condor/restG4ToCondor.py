@@ -171,6 +171,9 @@ for i in range(number_of_jobs):
     env_var_string = '\n'.join([f"export {key}={value}" for key, value in env_vars.items()])
     command = f"""
 source /afs/desy.de/user/p/porronla/.bashrc
+source /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/bin/geant4.sh
+source /data/dust/user/porronla/programs/rest/latest/install/thisREST.sh
+export REST_PATH=/data/dust/user/porronla/programs/rest/latest/install
 
 export LD_LIBRARY_PATH={REST_PATH}/lib:\
 /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
@@ -258,6 +261,9 @@ else:
         # merge command
         command = f"""
 source /afs/desy.de/user/p/porronla/.bashrc
+source /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/bin/geant4.sh
+source /data/dust/user/porronla/programs/rest/latest/install/thisREST.sh
+export REST_PATH=/data/dust/user/porronla/programs/rest/latest/install
 
 export LD_LIBRARY_PATH={REST_PATH}/lib:\
 /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
@@ -316,6 +322,9 @@ queue
     final_merge_output_name = str(condor_dir / f"{name}.root")
     command = f"""
 source /afs/desy.de/user/p/porronla/.bashrc
+source /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/bin/geant4.sh
+source /data/dust/user/porronla/programs/rest/latest/install/thisREST.sh
+export REST_PATH=/data/dust/user/porronla/programs/rest/latest/install
 
 export LD_LIBRARY_PATH={REST_PATH}/lib:\
 /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
@@ -379,6 +388,9 @@ queue
         final_merge_output_name_analysis_tmp = str(tmp_dir / filename_no_path)
         command = f"""
 source /afs/desy.de/user/p/porronla/.bashrc
+source /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/bin/geant4.sh
+source /data/dust/user/porronla/programs/rest/latest/install/thisREST.sh
+export REST_PATH=/data/dust/user/porronla/programs/rest/latest/install
 
 export LD_LIBRARY_PATH={REST_PATH}/lib:\
 /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
