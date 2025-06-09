@@ -33,6 +33,32 @@ restG4 = f"{REST_PATH}/bin/restG4"
 restRoot = f"{REST_PATH}/bin/restRoot"
 restManager = f"{REST_PATH}/bin/restManager"
 
+programs_base_dir = "/data/dust/user/porronla/programs"
+env_export = f"""
+bash -c "source {programs_base_dir}/root/root-6.26.10/root_build/bin/thisroot.sh"
+bash -c "source {programs_base_dir}/geant4/geant4-v11.0.3/install/bin/geant4.sh"
+
+export G4NEUTRONHPDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4NDL4.6
+export G4LEDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4EMLOW8.0
+export G4LEVELGAMMADATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/PhotonEvaporation5.7
+export G4RADIOACTIVEDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/RadioactiveDecay5.6
+export G4PARTICLEXSDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4PARTICLEXS4.0
+export G4PIIDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4PII1.3
+export G4REALSURFACEDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/RealSurface2.2
+export G4SAIDXSDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4SAIDDATA2.0
+export G4ABLADATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4ABLA3.1
+export G4INCLDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4INCL1.0
+export G4ENSDFSTATEDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4ENSDFSTATE2.3
+export G4TENDLDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4TENDL1.4
+
+export XercesC_INCLUDE_DIR={programs_base_dir}/xerces/xerces-c-3.3.0/install/include
+export XercesC_LIBRARY={programs_base_dir}/xerces/xerces-c-3.3.0/install/lib64/libxerces-c.so
+export LD_LIBRARY_PATH={programs_base_dir}/xerces/xerces-c-3.3.0/install/lib64:$LD_LIBRARY_PATH
+
+source {programs_base_dir}/garfield/install/share/Garfield/setupGarfield.sh
+source {programs_base_dir}/rest/latest/install/thisREST.sh
+"""
+
 # assert this binary exists
 subprocess.run([restG4, "--help"], check=True)
 
@@ -74,7 +100,7 @@ def parse_time_string(time_string) -> int:
     return total_seconds
 
 
-def partition_number(number, chunk_size):
+def partition_number(number, chunk_size: int):
     # returns a list of lists, each list contains a chunk of numbers
     partitions = []
     for start in range(0, number, chunk_size):
@@ -170,17 +196,16 @@ for i in range(number_of_jobs):
 
     env_var_string = '\n'.join([f"export {key}={value}" for key, value in env_vars.items()])
     command = f"""
-source /afs/desy.de/user/p/porronla/.bashrc
-source /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/bin/geant4.sh
-source /data/dust/user/porronla/programs/rest/latest/install/thisREST.sh
-export REST_PATH=/data/dust/user/porronla/programs/rest/latest/install
+{env_export}
+
+export REST_PATH={programs_base_dir}/rest/latest/install
 
 export LD_LIBRARY_PATH={REST_PATH}/lib:\
-/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
-/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64:\
-/data/dust/user/porronla/programs/root/root-6.26.10/root_install/lib:\
-/data/dust/user/porronla/programs/rest/latest/install/lib:\
-/data/dust/user/porronla/programs/garfield/install/lib64:\
+{programs_base_dir}/geant4/geant4-v11.0.3/install/lib64:\
+{programs_base_dir}/xerces/xerces-c-3.3.0/install/lib64:\
+{programs_base_dir}/root/root-6.26.10/root_install/lib:\
+{programs_base_dir}/rest/latest/install/lib:\
+{programs_base_dir}/garfield/install/lib64:\
 $LD_LIBRARY_PATH
 
 {env_var_string}
@@ -260,17 +285,16 @@ else:
             [f"mv --no-clobber {output_dir}/output_{i}.root {partition_merge_files_directory}" for i in partition])
         # merge command
         command = f"""
-source /afs/desy.de/user/p/porronla/.bashrc
-source /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/bin/geant4.sh
-source /data/dust/user/porronla/programs/rest/latest/install/thisREST.sh
-export REST_PATH=/data/dust/user/porronla/programs/rest/latest/install
+{env_export}
+
+export REST_PATH={programs_base_dir}/rest/latest/install
 
 export LD_LIBRARY_PATH={REST_PATH}/lib:\
-/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
-/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64:\
-/data/dust/user/porronla/programs/root/root-6.26.10/root_install/lib:\
-/data/dust/user/porronla/programs/rest/latest/install/lib:\
-/data/dust/user/porronla/programs/garfield/install/lib64:\
+{programs_base_dir}/geant4/geant4-v11.0.3/install/lib64:\
+{programs_base_dir}/xerces/xerces-c-3.3.0/install/lib64:\
+{programs_base_dir}/root/root-6.26.10/root_install/lib:\
+{programs_base_dir}/rest/latest/install/lib:\
+{programs_base_dir}/garfield/install/lib64:\
 $LD_LIBRARY_PATH
 
 {move_files_command}
@@ -321,17 +345,16 @@ queue
     # merge all files
     final_merge_output_name = str(condor_dir / f"{name}.root")
     command = f"""
-source /afs/desy.de/user/p/porronla/.bashrc
-source /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/bin/geant4.sh
-source /data/dust/user/porronla/programs/rest/latest/install/thisREST.sh
-export REST_PATH=/data/dust/user/porronla/programs/rest/latest/install
+{env_export}
+
+export REST_PATH={programs_base_dir}/rest/latest/install
 
 export LD_LIBRARY_PATH={REST_PATH}/lib:\
-/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
-/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64:\
-/data/dust/user/porronla/programs/root/root-6.26.10/root_install/lib:\
-/data/dust/user/porronla/programs/rest/latest/install/lib:\
-/data/dust/user/porronla/programs/garfield/install/lib64:\
+{programs_base_dir}/geant4/geant4-v11.0.3/install/lib64:\
+{programs_base_dir}/xerces/xerces-c-3.3.0/install/lib64:\
+{programs_base_dir}/root/root-6.26.10/root_install/lib:\
+{programs_base_dir}/rest/latest/install/lib:\
+{programs_base_dir}/garfield/install/lib64:\
 $LD_LIBRARY_PATH
 
 {restRoot} -q "{REST_PATH}/macros/geant4/REST_Geant4_MergeRestG4Files.C(\\\"{final_merge_output_name}\\\", \\\"{str(intermediate_merge_files_directory)}\\\")"
@@ -387,17 +410,16 @@ queue
         # same file name but in tmp directory
         final_merge_output_name_analysis_tmp = str(tmp_dir / filename_no_path)
         command = f"""
-source /afs/desy.de/user/p/porronla/.bashrc
-source /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/bin/geant4.sh
-source /data/dust/user/porronla/programs/rest/latest/install/thisREST.sh
-export REST_PATH=/data/dust/user/porronla/programs/rest/latest/install
+{env_export}
+
+export REST_PATH={programs_base_dir}/rest/latest/install
 
 export LD_LIBRARY_PATH={REST_PATH}/lib:\
-/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
-/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64:\
-/data/dust/user/porronla/programs/root/root-6.26.10/root_install/lib:\
-/data/dust/user/porronla/programs/rest/latest/install/lib:\
-/data/dust/user/porronla/programs/garfield/install/lib64:\
+{programs_base_dir}/geant4/geant4-v11.0.3/install/lib64:\
+{programs_base_dir}/xerces/xerces-c-3.3.0/install/lib64:\
+{programs_base_dir}/root/root-6.26.10/root_install/lib:\
+{programs_base_dir}/rest/latest/install/lib:\
+{programs_base_dir}/garfield/install/lib64:\
 $LD_LIBRARY_PATH
 
 {restManager} --c {args.rml_processing} --i {final_merge_output_name} --o {final_merge_output_name_analysis_tmp}
@@ -485,10 +507,17 @@ queue
     if not dry_run:
         # clear the ~/.rest directory
         # WARNING: If we don't do this, we run out of disk space.
-        # WARNING: Currently we need to manually generate some of the files in .rest (condor cannot do it due to permissions)
+        # WARNING: Currently we need to manually generate some files in .rest (condor cannot do it due to permissions)
         # See https://github.com/rest-for-physics/framework/issues/481
-        clean_home_rest_command = f"""rm -rf {os.environ["HOME"]}/.rest/gdml"""
-        os.system(clean_home_rest_command)
+        rest_home = os.environ.get("REST_HOME", "")
+        if not rest_home:
+            rest_home = os.environ.get("HOME")
+        if not rest_home:
+            raise Exception("Could not find REST_HOME or HOME environment variable")
+        rest_home = f"{rest_home}/.rest"
+        clean_home_rest_command = f"""rm -rf {rest_home}/gdml"""
+        print(f"CLEAN COMMAND: {clean_home_rest_command}")
+        # os.system(clean_home_rest_command)
         subprocess.run(["condor_submit_dag", name_dag_file])
 
 print(f"Output will be stored in {output_dir}")

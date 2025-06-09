@@ -18,6 +18,32 @@ try:
 except KeyError:
     raise Exception("REST_PATH environment variable must be set")
 
+programs_base_dir = "/data/dust/user/porronla/programs"
+env_export = f"""
+bash -c "source {programs_base_dir}/root/root-6.26.10/root_build/bin/thisroot.sh"
+bash -c "source {programs_base_dir}/geant4/geant4-v11.0.3/install/bin/geant4.sh"
+
+export G4NEUTRONHPDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4NDL4.6
+export G4LEDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4EMLOW8.0
+export G4LEVELGAMMADATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/PhotonEvaporation5.7
+export G4RADIOACTIVEDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/RadioactiveDecay5.6
+export G4PARTICLEXSDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4PARTICLEXS4.0
+export G4PIIDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4PII1.3
+export G4REALSURFACEDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/RealSurface2.2
+export G4SAIDXSDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4SAIDDATA2.0
+export G4ABLADATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4ABLA3.1
+export G4INCLDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4INCL1.0
+export G4ENSDFSTATEDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4ENSDFSTATE2.3
+export G4TENDLDATA={programs_base_dir}/geant4/geant4-v11.0.3/v11.0.3_data/G4TENDL1.4
+
+export XercesC_INCLUDE_DIR={programs_base_dir}/xerces/xerces-c-3.3.0/install/include
+export XercesC_LIBRARY={programs_base_dir}/xerces/xerces-c-3.3.0/install/lib64/libxerces-c.so
+export LD_LIBRARY_PATH={programs_base_dir}/xerces/xerces-c-3.3.0/install/lib64:$LD_LIBRARY_PATH
+
+source {programs_base_dir}/garfield/install/share/Garfield/setupGarfield.sh
+source {programs_base_dir}/rest/latest/install/thisREST.sh
+"""
+
 restRoot = f"{REST_PATH}/bin/restRoot"
 restManager = f"{REST_PATH}/bin/restManager"
 
@@ -82,9 +108,7 @@ tmp_file = f"{tmp_dir}/output.root"
 
 env_var_string = '\n'.join([f"export {key}={value}" for key, value in env_vars.items()])
 command = f"""
-source /afs/desy.de/user/p/porronla/.bashrc
-source /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/bin/geant4.sh
-source /data/dust/user/porronla/programs/rest/latest/install/thisREST.sh
+{env_export}
 export REST_PATH=/data/dust/user/porronla/programs/rest/latest/install
 
 export ANALYSIS_IS_SIMULATION="ON"
@@ -99,11 +123,11 @@ export SIMULATION_SIGNAL_BIN="262"
 export TRIG_DELAY_TCM="1"
 
 export LD_LIBRARY_PATH={REST_PATH}/lib:\
-/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
-/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64:\
-/data/dust/user/porronla/programs/root/root-6.26.10/root_install/lib:\
-/data/dust/user/porronla/programs/rest/latest/install/lib:\
-/data/dust/user/porronla/programs/garfield/install/lib64:\
+{programs_base_dir}/geant4/geant4-v11.0.3/install/lib64:\
+{programs_base_dir}/xerces/xerces-c-3.3.0/install/lib64:\
+{programs_base_dir}/root/root-6.26.10/root_install/lib:\
+{programs_base_dir}/rest/latest/install/lib:\
+{programs_base_dir}/garfield/install/lib64:\
 $LD_LIBRARY_PATH
 
 {env_var_string}
@@ -143,8 +167,6 @@ should_transfer_files = yes
 
 queue
 """
-
-# write script_content to file, create parents directory if needed
 
 os.makedirs(os.path.dirname(name_script), exist_ok=True)
 with open(name_script, "w") as f:
