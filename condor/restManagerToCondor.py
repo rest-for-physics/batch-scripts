@@ -52,7 +52,7 @@ user = os.environ["USER"]
 if user == "":
     raise Exception("Could not find current user")
 
-condor_dir = Path(f"/nfs/dust/iaxo/user/{user}") / "condor" / name
+condor_dir = Path(f"/data/dust/user/{user}") / "condor" / name
 condor_dir.mkdir(parents=True, exist_ok=True)
 
 output_dir = args.output_dir
@@ -76,13 +76,36 @@ rml = rml.resolve()
 time_additional = 3600  # give 1h of margin
 
 # same as input but instead of ending in .root ends in .analysis.root
-output_filename = Path(args.input_file).stem + ".analysis.root"
+output_filename = Path(args.input_file).stem + "_analysis.root"
 output_file = str(output_dir / output_filename)
 tmp_file = f"{tmp_dir}/output.root"
 
 env_var_string = '\n'.join([f"export {key}={value}" for key, value in env_vars.items()])
 command = f"""
-source {REST_PATH}/thisREST.sh
+source /afs/desy.de/user/p/porronla/.bashrc
+source /data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/bin/geant4.sh
+source /data/dust/user/porronla/programs/rest/latest/install/thisREST.sh
+export REST_PATH=/data/dust/user/porronla/programs/rest/latest/install
+
+export ANALYSIS_IS_SIMULATION="ON"
+export REST_GAS="Argon-Isobutane 1Pct 10-10E3Vcm"
+export PRESSURE="1.4"
+export DRIFT_FIELD="153.33"
+export SAMPLING_TPC="40"
+export SAMPLING_VETO="200"
+export TRIG_DELAY_TPC="10"
+export TRIG_DELAY_VETO="60"
+export SIMULATION_SIGNAL_BIN="262"
+export TRIG_DELAY_TCM="1"
+
+export LD_LIBRARY_PATH={REST_PATH}/lib:\
+/data/dust/user/porronla/programs/geant4/geant4-v11.0.3/install/lib64:\
+/data/dust/user/porronla/programs/xerces/xerces-c-3.3.0/install/lib64:\
+/data/dust/user/porronla/programs/root/root-6.26.10/root_install/lib:\
+/data/dust/user/porronla/programs/rest/latest/install/lib:\
+/data/dust/user/porronla/programs/garfield/install/lib64:\
+$LD_LIBRARY_PATH
+
 {env_var_string}
 {restManager} --c {args.rml} --i {args.input_file} --o {tmp_file} {" ".join(restManager_args)}
 mv {tmp_file} {output_file}
