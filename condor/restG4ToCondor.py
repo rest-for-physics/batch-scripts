@@ -236,6 +236,8 @@ getenv       = True
 output       = {str(stdout_dir)}/output_{i}
 error        = {str(stderr_dir)}/error_{i}
 log          = {str(logs_dir)}/log_{i}
+stream_output  = True
+stream_error   = True
 
 request_cpus   = {1 if threads == 0 else threads + 1}
 {memory_sub_string}
@@ -325,6 +327,8 @@ getenv       = True
 output       = {str(stdout_dir)}/output_merge_{partition_suffix}
 error        = {str(stderr_dir)}/error_merge_{partition_suffix}
 log          = {str(logs_dir)}/log_merge_{partition_suffix}
+stream_output  = True
+stream_error   = True
 
 request_cpus   = 1
 {memory_sub_string}
@@ -384,6 +388,8 @@ getenv       = True
 output       = {str(stdout_dir)}/output_merge
 error        = {str(stderr_dir)}/error_merge
 log          = {str(logs_dir)}/log_merge
+stream_output  = True
+stream_error   = True
 
 request_cpus   = 1
 {memory_sub_string}
@@ -456,6 +462,8 @@ getenv       = True
 output       = {str(stdout_dir)}/output_analysis
 error        = {str(stderr_dir)}/error_analysis
 log          = {str(logs_dir)}/log_analysis
+stream_output  = True
+stream_error   = True
 
 request_cpus   = 1
 {memory_sub_string}
