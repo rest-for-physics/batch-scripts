@@ -112,14 +112,14 @@ command = f"""
 export REST_PATH=/data/dust/user/porronla/programs/rest/latest/install
 
 export ANALYSIS_IS_SIMULATION="ON"
-export REST_GAS="Argon-Isobutane 1Pct 10-10E3Vcm"
+export REST_GAS="Argon-Isobutane 2Pct 10-10E3Vcm"
 export PRESSURE="1.4"
-export DRIFT_FIELD="153.33"
+export DRIFT_FIELD="183.33"
 export SAMPLING_TPC="40"
 export SAMPLING_VETO="200"
-export TRIG_DELAY_TPC="10"
-export TRIG_DELAY_VETO="60"
-export SIMULATION_SIGNAL_BIN="262"
+export TRIG_DELAY_TPC="15"
+export TRIG_DELAY_VETO="75"
+export SIMULATION_SIGNAL_BIN="128"
 export TRIG_DELAY_TCM="1"
 
 export LD_LIBRARY_PATH={REST_PATH}/lib:\
@@ -157,6 +157,8 @@ getenv       = True
 output       = {str(stdout_dir)}/output
 error        = {str(stderr_dir)}/error
 log          = {str(logs_dir)}/log
+stream_output  = True
+stream_error   = True
 
 request_cpus   = 1
 {memory_sub_string}
