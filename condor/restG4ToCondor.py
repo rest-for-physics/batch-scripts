@@ -68,6 +68,7 @@ parser = argparse.ArgumentParser(description="Launch restG4 jobs on condor")
 parser.add_argument("--n-jobs", type=int, default=1, help="Number of jobs to submit")
 parser.add_argument("--rml", type=str, default="simulation.rml", help="RML config file")
 parser.add_argument("--output-dir", type=str, default="", help="Output directory")
+parser.add_argument("--move-dir", type=str, default="", help="Directory to move final file to")
 parser.add_argument("--time", type=str, default="1h0m0s", help="Time per job (e.g. 1h0m0s)")
 parser.add_argument("--memory", type=int, default="0", help="Memory in MB. If 0, use default value")
 parser.add_argument("--threads", type=int, default="0",
@@ -149,6 +150,8 @@ if user == "":
 condor_dir = Path(f"/data/dust/user/{user}") / "condor" / name
 condor_dir.mkdir(parents=True, exist_ok=True)
 
+move_dir = args.move_dir
+
 output_dir = args.output_dir
 if output_dir == "":
     output_dir = condor_dir / "output"
@@ -191,8 +194,14 @@ for i in range(number_of_jobs):
     processing_command = ""
     if run_processing:
         processing_command = f"""
-        {restManager} --c {args.rml_processing} --i {tmp_file} --o {tmp_file}
+{restManager} --c {args.rml_processing} --i {tmp_file} --o {tmp_file}
         """
+
+        if number_of_jobs == 1 and not merge:
+            final_filepath = str(condor_dir / f"{name}.root")
+            output_file = final_filepath
+            if move_dir:
+                output_file = str(move_dir / f"{name}.root")
 
     env_var_string = '\n'.join([f"export {key}={value}" for key, value in env_vars.items()])
     command = f"""
