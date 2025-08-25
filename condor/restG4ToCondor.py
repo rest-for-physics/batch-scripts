@@ -151,6 +151,8 @@ condor_dir = Path(f"/data/dust/user/{user}") / "condor" / name
 condor_dir.mkdir(parents=True, exist_ok=True)
 
 move_dir = args.move_dir
+if move_dir:
+    move_dir = Path(move_dir)
 
 output_dir = args.output_dir
 if output_dir == "":
