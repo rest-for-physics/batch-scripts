@@ -194,6 +194,12 @@ for i in range(number_of_jobs):
         {restManager} --c {args.rml_processing} --i {tmp_file} --o {tmp_file}
         """
 
+        if number_of_jobs == 1 and not merge:
+            final_filepath = str(condor_dir / f"{name}.root")
+            processing_command += f"""
+        mv {tmp_file} ${final_filepath}
+            """
+
     env_var_string = '\n'.join([f"export {key}={value}" for key, value in env_vars.items()])
     command = f"""
 {env_export}
